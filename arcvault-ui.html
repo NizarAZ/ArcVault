@@ -1,0 +1,2370 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ArcVault — USDC Yield Vault on Arc Testnet</title>
+  <meta property="og:title" content="ArcVault — USDC Yield Vault on Arc Testnet">
+  <meta property="og:description" content="Deposit USDC, mint yUSDC, and earn yield via Euler lending on Arc Testnet. Transparent vault with automated keeper and sub-second finality.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ArcVault — USDC Yield Vault on Arc Testnet">
+  <meta name="twitter:description" content="One vault. One strategy. Full signal. Built on Arc Testnet.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><path d='M10 90 Q10 10 50 10 Q90 10 90 90' stroke='%234fc3f7' stroke-width='8' fill='none'/><path d='M30 90 Q30 55 50 55 Q70 55 70 90' stroke='%234fc3f7' stroke-width='6' fill='none'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg:           #04060d;
+      --color-surface:      #080c14;
+      --color-surface-2:    #0c1220;
+      --color-surface-3:    #111928;
+      --color-border:       rgba(232, 234, 240, 0.08);
+      --color-text:         #e8eaf0;
+      --color-text-muted:   #8892a4;
+      --color-text-faint:   #3d4557;
+      --color-primary:      #4fc3f7;
+      --color-primary-glow: rgba(79, 195, 247, 0.2);
+      --color-success:      #4caf80;
+      --color-warning:      #f0a050;
+      --color-error:        #e05c6a;
+      --font-display:       'Outfit', sans-serif;
+      --font-mono:          'JetBrains Mono', monospace;
+      --radius-sm:          4px;
+      --radius-md:          8px;
+      --radius-lg:          12px;
+      --radius-full:        999px;
+      --transition-base:    220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-family: var(--font-display);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      background: var(--color-bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-base);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+    }
+
+    button:active {
+      transform: scale(0.975);
+    }
+
+    #starfield {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--color-bg);
+    }
+
+    .arc-watermark {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 0;
+      width: min(420px, 72vw);
+      pointer-events: none;
+      opacity: 0;
+      color: var(--color-text);
+      transform: translate(-50%, calc(-50% + 60px)) scale(0.3);
+      animation: moon-rise 2200ms cubic-bezier(0.16, 1, 0.3, 1) forwards,
+        moon-drift 6000ms ease-in-out 2200ms infinite alternate;
+    }
+
+    .arc-watermark svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      opacity: 0.07;
+    }
+
+    .arc-logo-path {
+      fill: currentColor;
+    }
+
+    @keyframes moon-rise {
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    @keyframes moon-drift {
+      from {
+        transform: translate(-50%, -50%) scale(1);
+      }
+      to {
+        transform: translate(-50%, calc(-50% - 1px)) scale(1);
+      }
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 24px 0 72px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 0;
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 29px;
+      height: 38px;
+      flex: 0 0 auto;
+      color: var(--color-text);
+    }
+
+    .brand-name {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .network-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: var(--color-surface-3);
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .network-pill::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--color-primary);
+      box-shadow: 0 0 10px var(--color-primary-glow);
+      content: "";
+    }
+
+    .wallet-state {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 20, 0.72);
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+
+    .wallet-state.connected {
+      display: inline-flex;
+      animation: wallet-materialize 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes wallet-materialize {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .btn-primary {
+      border: 1px solid rgba(79, 195, 247, 0);
+      background: rgba(79, 195, 247, 0.06);
+      color: var(--color-text);
+      padding: 0 18px;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      border-color: var(--color-primary);
+      background: rgba(79, 195, 247, 0.12);
+      color: var(--color-primary);
+      box-shadow: 0 0 16px rgba(79, 195, 247, 0.25), 0 0 4px rgba(79, 195, 247, 0.15);
+      outline: none;
+    }
+
+    .btn-primary.is-busy {
+      border-color: rgba(79, 195, 247, 0.34);
+      color: var(--color-primary);
+      box-shadow: 0 0 14px rgba(79, 195, 247, 0.18);
+    }
+
+    .btn-secondary,
+    .segmented button {
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-muted);
+      padding: 0 15px;
+      font-weight: 400;
+    }
+
+    .btn-secondary:hover,
+    .btn-secondary:focus-visible,
+    .segmented button:hover,
+    .segmented button:focus-visible {
+      border-color: rgba(232, 234, 240, 0.18);
+      background: rgba(255, 255, 255, 0.04);
+      color: #c8d8e8;
+      outline: none;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 22px;
+      align-items: stretch;
+      min-height: 0;
+      padding: 34px 0 30px;
+    }
+
+    .panel {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: rgba(8, 12, 20, 0.76);
+      backdrop-filter: blur(16px);
+    }
+
+    .mission {
+      display: flex;
+      min-height: 520px;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(28px, 5vw, 58px);
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--color-text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 720px;
+      margin: 0;
+      font-size: clamp(46px, 7vw, 88px);
+      font-weight: 300;
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      max-width: 620px;
+      margin: 22px 0 0;
+      color: var(--color-text-muted);
+      font-size: clamp(17px, 2vw, 20px);
+      font-weight: 300;
+      line-height: 1.55;
+    }
+
+    .mission-bottom {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 52px;
+    }
+
+    .metric {
+      min-height: 116px;
+      padding: 18px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(12, 18, 32, 0.58);
+    }
+
+    .metric-value {
+      display: block;
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: clamp(24px, 3vw, 34px);
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .metric-label {
+      display: block;
+      margin-top: 12px;
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .metric-subtext {
+      display: block;
+      margin-top: 8px;
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .metric-subtext a {
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 180ms ease;
+    }
+
+    .metric-subtext a:hover {
+      color: var(--color-primary);
+    }
+
+    .vault-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 520px;
+      padding: 20px;
+    }
+
+    .vault-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .vault-header-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    .health-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      padding: 0 13px;
+      border: 1px solid rgba(232, 234, 240, 0.14);
+      border-radius: var(--radius-full);
+      background: rgba(12, 18, 32, 0.86);
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .health-pill::before {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--radius-full);
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+      content: "";
+    }
+
+    .health-pill.idle {
+      color: var(--color-text-faint);
+    }
+
+    .health-pill.supplying,
+    .health-pill.compounding {
+      color: var(--color-primary);
+    }
+
+    .health-pill.rebalancing {
+      color: var(--color-warning);
+    }
+
+    .health-pill.withdraw-ready {
+      color: var(--color-success);
+    }
+
+    .health-pill.compounding::before {
+      animation: health-pulse 1400ms ease-in-out infinite;
+    }
+
+    @keyframes health-pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    .vault-title {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 600;
+    }
+
+    .vault-subtitle {
+      margin: 7px 0 0;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-success);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status::before {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 12px rgba(76, 175, 128, 0.22);
+      content: "";
+      animation: live-pulse 1800ms ease-in-out infinite;
+    }
+
+    @keyframes live-pulse {
+      0%, 100% {
+        opacity: 0.42;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .segmented button.active {
+      border-color: rgba(79, 195, 247, 0.62);
+      background: rgba(79, 195, 247, 0.08);
+      color: var(--color-primary);
+    }
+
+    .tab-shell {
+      position: relative;
+      min-height: 372px;
+      overflow: hidden;
+    }
+
+    .tab-panel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(12px);
+      transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tab-panel.exiting {
+      opacity: 0;
+      transform: translateX(-12px);
+      transition-duration: 180ms;
+    }
+
+    .tab-panel.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+
+    label {
+      display: block;
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .amount-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 66px;
+      margin-top: 8px;
+      padding: 0 14px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(4, 6, 13, 0.68);
+    }
+
+    .readonly-banner {
+      display: none;
+      min-height: 30px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 20, 0.48);
+      color: var(--color-text-faint);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    body:not(.wallet-connected) .readonly-banner {
+      display: flex;
+    }
+
+    body:not(.wallet-connected) #depositAmount {
+      cursor: not-allowed;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    body:not(.wallet-connected) #depositMax {
+      display: none;
+    }
+
+    body:not(.wallet-connected) #depositAction {
+      grid-column: 1 / -1;
+    }
+
+    .amount-field input {
+      width: 100%;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 26px;
+    }
+
+    .amount-field:focus-within {
+      border-color: rgba(79, 195, 247, 0.38);
+      box-shadow: 0 0 0 1px rgba(79, 195, 247, 0.08);
+    }
+
+    .token-chip {
+      flex: 0 0 auto;
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(232, 234, 240, 0.05);
+      color: var(--color-text-muted);
+      font-size: 13px;
+    }
+
+    .data-row strong {
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .tooltip-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-full);
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      cursor: help;
+    }
+
+    .tooltip {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 4;
+      width: 240px;
+      padding: 10px 11px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface-3);
+      color: var(--color-text-muted);
+      font-family: var(--font-display);
+      font-size: 12px;
+      line-height: 1.4;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(4px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .tooltip-wrap:hover .tooltip,
+    .tooltip-wrap:focus-within .tooltip {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .form-actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .activity {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 22px;
+      padding: 42px 0 0;
+    }
+
+    .position-panel {
+      position: relative;
+      margin-top: 6px;
+      padding: 24px;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body:not(.wallet-connected) .position-panel {
+      display: flex;
+      min-height: 140px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-3, 12px);
+      padding: var(--space-8, 32px);
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    body.wallet-connected .position-panel {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .position-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .position-header h2 {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 400;
+    }
+
+    .position-header span {
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    body.wallet-connected .position-grid {
+      animation: position-grid-in 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    body.wallet-connected .position-cell {
+      animation: position-cell-in 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation-delay: calc(var(--cell-index, 0) * 60ms);
+    }
+
+    .position-panel.panel-enter {
+      animation: position-enter 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes position-enter {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes position-grid-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes position-cell-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .position-cell {
+      min-height: 102px;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(12, 18, 32, 0.54);
+    }
+
+    .position-cell span {
+      display: block;
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .position-cell strong {
+      display: block;
+      margin-top: 12px;
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: clamp(18px, 2.4vw, 26px);
+      font-weight: 500;
+    }
+
+    .position-cell .positive {
+      color: var(--color-primary);
+    }
+
+    .position-placeholder {
+      position: static;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-3, 12px);
+      width: 100%;
+      min-height: 140px;
+      padding: var(--space-8, 32px);
+      color: var(--color-text-muted);
+      text-align: center;
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+
+    .position-placeholder.exiting {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+
+    .empty-wallet-icon {
+      width: 32px;
+      height: 32px;
+      color: var(--color-text-faint);
+    }
+
+    .empty-title {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-family: var(--font-display);
+      font-size: var(--text-base, 16px);
+      font-weight: 400;
+    }
+
+    .empty-copy {
+      max-width: 36ch;
+      margin: 0;
+      color: var(--color-text-faint);
+      font-family: var(--font-display);
+      font-size: var(--text-sm, 14px);
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    #positionConnect {
+      width: 180px;
+    }
+
+    .withdraw-confirm {
+      display: none;
+      gap: 12px;
+      margin-top: auto;
+      padding: 14px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(12, 18, 32, 0.68);
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    .withdraw-confirm.visible {
+      display: grid;
+      animation: confirm-in 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .withdraw-confirm.exiting {
+      display: grid;
+      animation: confirm-out 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .confirm-title {
+      margin: 0;
+      color: var(--color-text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .confirm-summary {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .confirm-summary div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--color-text-muted);
+      font-size: 12px;
+    }
+
+    .confirm-summary strong {
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .confirm-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @keyframes confirm-in {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes confirm-out {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+    }
+
+    body.wallet-connected .position-placeholder {
+      display: none;
+    }
+
+    body:not(.wallet-connected) .position-panel > .position-header,
+    body:not(.wallet-connected) .position-panel > .position-grid {
+      display: none;
+    }
+
+    .section-panel {
+      padding: 24px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 400;
+    }
+
+    .section-title span {
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .tx-row {
+      display: grid;
+      grid-template-columns: 128px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      min-height: 64px;
+      padding: 12px 14px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 20, 0.5);
+      transition: all var(--transition-base);
+    }
+
+    .tx-row:hover {
+      border-color: rgba(232, 234, 240, 0.18);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .tx-row.is-new {
+      border-color: rgba(79, 195, 247, 0.34);
+      animation: tx-arrive 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes tx-arrive {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .tx-kind,
+    .tx-hash,
+    .tx-amount {
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .tx-kind {
+      color: var(--color-text);
+    }
+
+    .tx-hash {
+      overflow: hidden;
+      color: var(--color-text-muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tx-amount {
+      color: var(--color-text);
+      text-align: right;
+    }
+
+    .tx-link {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .tx-link:hover {
+      color: var(--color-primary);
+    }
+
+    .hash-link {
+      color: var(--color-primary);
+      text-decoration: none;
+      transition: opacity 180ms ease;
+    }
+
+    .hash-link:hover {
+      opacity: 0.78;
+      text-decoration: underline;
+    }
+
+    .external-icon {
+      margin-left: 4px;
+      color: var(--color-text-faint);
+      font-size: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 8;
+      max-width: min(360px, calc(100vw - 32px));
+      padding: 14px 16px;
+      border: 1px solid rgba(79, 195, 247, 0.28);
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 20, 0.92);
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(16px);
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .bot-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .bot-card {
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(12, 18, 32, 0.54);
+    }
+
+    .bot-card span {
+      display: block;
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .bot-card strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    .compound-lines {
+      display: grid;
+      gap: 5px;
+      margin-top: 8px;
+      font-family: var(--font-mono);
+    }
+
+    .compound-lines strong {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .compound-lines small {
+      color: var(--color-text-muted);
+      font-size: 12px;
+    }
+
+    .email-preview {
+      margin-top: 14px;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(4, 6, 13, 0.54);
+    }
+
+    .email-preview p {
+      margin: 8px 0 0;
+      color: var(--color-text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      margin-top: 56px;
+      border-top: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .footer a {
+      color: inherit;
+      text-decoration: none;
+      transition: color 180ms ease;
+    }
+
+    .footer a:hover {
+      color: var(--color-primary);
+    }
+
+    .reveal [data-stagger] {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .reveal.is-visible [data-stagger] {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+        transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition-delay: calc(var(--stagger, 0) * 80ms);
+    }
+
+    @media (max-width: 980px) {
+      .topbar,
+      .header-actions {
+        align-items: flex-start;
+      }
+
+      .topbar {
+        flex-direction: column;
+      }
+
+      .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+      }
+
+      .hero,
+      .activity {
+        grid-template-columns: 1fr;
+      }
+
+      .mission {
+        padding-right: 14px;
+        padding-left: 14px;
+      }
+
+      .hero {
+        min-height: 0;
+      }
+
+      .mission,
+      .vault-card {
+        min-height: auto;
+      }
+
+      .tab-shell {
+        min-height: 372px;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page {
+        width: min(100% - 24px, 1180px);
+        padding-top: 12px;
+      }
+
+      .mission {
+        padding: 24px;
+      }
+
+      h1 {
+        font-size: clamp(38px, 12vw, 48px);
+        line-height: 1.02;
+      }
+
+      .hero-copy {
+        margin-top: 18px;
+        font-size: 15px;
+      }
+
+      .hero {
+        padding-top: 22px;
+      }
+
+      .mission {
+        display: block;
+      }
+
+      .metric {
+        min-height: 92px;
+      }
+
+      .mission-bottom {
+        grid-template-columns: 1fr;
+        margin-top: 28px;
+      }
+
+      .network-pill {
+        width: 100%;
+        white-space: normal;
+      }
+
+      .wallet-state {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .header-actions .btn-primary {
+        width: 100%;
+      }
+
+      .tx-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .tx-amount {
+        text-align: left;
+      }
+
+      .form-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .toast {
+        right: 12px;
+        bottom: 12px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .page {
+        width: min(100% - 24px, 1180px);
+      }
+
+      .topbar {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 0;
+        overflow: hidden;
+      }
+
+      .brand {
+        gap: 8px;
+      }
+
+      .brand-mark {
+        width: 24px;
+        height: 32px;
+      }
+
+      .brand-name {
+        font-size: 18px;
+      }
+
+      .header-actions {
+        width: auto;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-left: auto;
+        min-width: 0;
+      }
+
+      .network-pill {
+        width: auto;
+        min-height: 32px;
+        padding: 0 10px;
+        font-size: 0;
+      }
+
+      .network-pill::after {
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        content: "5042002";
+      }
+
+      .wallet-state {
+        display: none !important;
+      }
+
+      .header-actions .btn-primary {
+        width: auto;
+        padding: 0 10px;
+        font-size: 0;
+      }
+
+      .header-actions .btn-primary::after {
+        font-size: 12px;
+        content: "Connect";
+      }
+
+      body.wallet-connected .header-actions .btn-primary::after {
+        content: "On";
+      }
+
+      .hero,
+      .activity {
+        grid-template-columns: 1fr;
+      }
+
+      .vault-card {
+        min-height: auto;
+      }
+
+      .mission-bottom {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .metric {
+        min-height: 94px;
+        min-width: 0;
+        padding: 10px;
+        overflow: hidden;
+      }
+
+      .metric-value {
+        font-size: clamp(1rem, 3vw, 1.25rem);
+      }
+
+      .metric-label,
+      .metric-subtext {
+        font-size: 8px;
+        overflow-wrap: anywhere;
+      }
+
+      .metric-subtext {
+        line-height: 1.25;
+      }
+
+      .position-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .position-panel,
+      .section-panel {
+        padding: 16px;
+      }
+
+      .position-cell {
+        min-height: 92px;
+        padding: 12px;
+      }
+
+      .position-cell strong {
+        font-size: clamp(1rem, 4vw, 1.25rem);
+      }
+
+      .bot-stack {
+        grid-template-columns: 1fr;
+      }
+
+      .tx-row {
+        grid-template-columns: 1fr;
+      }
+
+      .tx-amount {
+        text-align: left;
+      }
+
+      .footer {
+        padding: 0 14px;
+        font-size: 10px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 150ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+      }
+
+      .arc-watermark {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      .reveal [data-stagger] {
+        transform: none;
+      }
+
+      .reveal.is-visible [data-stagger] {
+        transition: opacity 150ms ease;
+      }
+
+      .tab-panel,
+      .tab-panel.exiting,
+      .tab-panel.active,
+      .wallet-state,
+      .position-panel,
+      .tooltip {
+        transform: none;
+      }
+
+      .position-panel.panel-enter {
+        animation-name: none;
+      }
+
+      body.wallet-connected .position-grid,
+      body.wallet-connected .position-cell {
+        animation-name: none;
+      }
+
+      .withdraw-confirm.visible,
+      .withdraw-confirm.exiting {
+        animation-duration: 150ms;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+
+  <div class="arc-watermark" aria-hidden="true">
+    <svg viewBox="0 0 512 512" role="img">
+      <path class="arc-logo-path" d="M85 422C90 284 123 170 184 92C211 57 238 40 266 40C301 40 333 67 362 121C401 193 423 293 429 422L369 387C363 284 346 210 318 164C300 134 282 119 264 119C247 119 229 135 211 166C177 223 156 307 148 422H85ZM214 337C218 305 222 277 227 253C274 252 329 258 392 272C402 319 408 369 411 422C352 390 286 369 214 337Z"/>
+    </svg>
+  </div>
+
+  <main class="page">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 512 512" aria-hidden="true">
+          <path class="arc-logo-path" d="M85 422C90 284 123 170 184 92C211 57 238 40 266 40C301 40 333 67 362 121C401 193 423 293 429 422L369 387C363 284 346 210 318 164C300 134 282 119 264 119C247 119 229 135 211 166C177 223 156 307 148 422H85ZM214 337C218 305 222 277 227 253C274 252 329 258 392 272C402 319 408 369 411 422C352 390 286 369 214 337Z"/>
+        </svg>
+        <h1 class="brand-name">ArcVault</h1>
+      </div>
+      <div class="header-actions">
+        <div class="network-pill">Arc Testnet · Chain 5042002 · Gas: USDC</div>
+        <div class="wallet-state" id="walletState">
+          <span id="walletAddress">0x7a42...f19c</span>
+          <span id="walletBalance">1,248.50 USDC</span>
+        </div>
+        <button class="btn-primary" id="connectWallet" type="button">Connect Wallet</button>
+      </div>
+    </header>
+
+    <section class="hero reveal is-visible">
+      <div class="mission panel">
+        <div>
+          <p class="eyebrow" data-stagger style="--stagger:0">USDC vault on Arc testnet</p>
+          <h1 data-stagger style="--stagger:1">One vault. One strategy. Full signal.</h1>
+          <p class="hero-copy" data-stagger style="--stagger:2">Deposit testnet USDC, mint yUSDC, and watch every accounting move land on Arc with sub-second finality. Built for a single Euler lending strategy and a daily vault keeper.</p>
+        </div>
+        <div class="mission-bottom">
+          <div class="metric" data-stagger style="--stagger:3">
+            <span class="metric-value" id="vaultMetric" data-count="48210.42">0</span>
+            <span class="metric-label">Vault USDC</span>
+          </div>
+          <div class="metric" data-stagger style="--stagger:4">
+            <span class="metric-value" data-count="3.86" data-suffix="%">0</span>
+            <span class="metric-label">Net APY</span>
+            <span class="metric-subtext">Sourced from <a href="https://euler.finance" target="_blank" rel="noopener noreferrer">Euler</a> · Arc Testnet · Updated 4h ago</span>
+          </div>
+          <div class="metric" data-stagger style="--stagger:5">
+            <span class="metric-value" id="earnedMetric" data-count="0.82" data-prefix="+">0</span>
+            <span class="metric-label">24h Earned</span>
+            <span class="metric-subtext" id="earnedContext">≈ $0.82 · 0.0017% of position</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="vault-card panel">
+        <div class="vault-header">
+          <div>
+            <h2 class="vault-title">ArcVault USDC</h2>
+            <p class="vault-subtitle">yUSDC · Euler strategy</p>
+          </div>
+          <div class="vault-header-status">
+            <span class="health-pill idle" id="healthPill">Idle</span>
+            <span class="status">Live</span>
+          </div>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Vault actions">
+          <button class="active" type="button" role="tab" aria-selected="true" data-tab-trigger="deposit">Deposit</button>
+          <button type="button" role="tab" aria-selected="false" data-tab-trigger="withdraw">Withdraw</button>
+        </div>
+
+        <div class="tab-shell">
+          <section class="tab-panel active" id="depositPanel" data-tab-panel="deposit">
+            <div class="readonly-banner">Wallet not connected — read-only mode</div>
+            <label for="depositAmount">Amount</label>
+            <div class="amount-field">
+              <input id="depositAmount" inputmode="decimal" value="250.00" aria-label="Deposit amount">
+              <span class="token-chip">USDC</span>
+            </div>
+            <div>
+              <div class="data-row"><span>Wallet balance</span><strong id="depositWalletBalance">1,248.50 USDC</strong></div>
+              <div class="data-row"><span>Estimated yUSDC</span><strong id="estimatedShares">249.91</strong></div>
+              <div class="data-row"><span>Route</span><strong>USDC → yUSDC</strong></div>
+              <div class="data-row">
+                <span class="tooltip-wrap">Rate <span class="tooltip-icon" tabindex="0">ℹ</span><span class="tooltip">Rate increases as vault earns yield. yUSDC is your receipt token.</span></span>
+                <strong id="exchangeRate">1 yUSDC = 1.0032 USDC</strong>
+              </div>
+              <div class="data-row"><span>Explorer</span><strong>testnet.arcscan.app</strong></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" id="depositAction" type="button">Deposit</button>
+              <button class="btn-secondary" id="depositMax" type="button">Max</button>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="withdrawPanel" data-tab-panel="withdraw">
+            <label for="withdrawAmount">Shares</label>
+            <div class="amount-field">
+              <input id="withdrawAmount" inputmode="decimal" value="120.00" aria-label="Withdraw shares">
+              <span class="token-chip">yUSDC</span>
+            </div>
+            <div>
+              <div class="data-row"><span>Your shares</span><strong id="userShares">384.22 yUSDC</strong></div>
+              <div class="data-row"><span>Withdrawable</span><strong id="withdrawableBalance">384.90 USDC</strong></div>
+              <div class="data-row"><span>Strategy state</span><strong id="strategyState">Lending</strong></div>
+              <div class="data-row"><span>Settlement</span><strong>1 tx</strong></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" id="withdrawAction" type="button">Withdraw</button>
+              <button class="btn-secondary" id="viewExplorer" type="button">View on Explorer</button>
+            </div>
+            <div class="withdraw-confirm" id="withdrawConfirm" aria-live="polite">
+              <p class="confirm-title">Confirm withdrawal</p>
+              <div class="confirm-summary">
+                <div><span>Burn</span><strong id="confirmBurn">120.00 yUSDC</strong></div>
+                <div><span>Receive</span><strong id="confirmReceive">120.38 USDC</strong></div>
+              </div>
+              <div class="confirm-actions">
+                <button class="btn-secondary" id="cancelWithdraw" type="button">Cancel</button>
+                <button class="btn-primary" id="confirmWithdraw" type="button">Confirm</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </section>
+
+    <section class="position-panel panel" id="positionPanel">
+      <div class="position-header">
+        <h2>Personal Position</h2>
+        <span id="positionAddress">0x7a42...f19c</span>
+      </div>
+      <div class="position-grid">
+        <div class="position-cell" style="--cell-index:0">
+          <span>My Deposited USDC</span>
+          <strong id="myDeposited">0.00 USDC</strong>
+        </div>
+        <div class="position-cell" style="--cell-index:1">
+          <span>My yUSDC Shares</span>
+          <strong id="myShares">0.0000 yUSDC</strong>
+        </div>
+        <div class="position-cell" style="--cell-index:2">
+          <span>My Earned USDC</span>
+          <strong class="positive" id="myEarned">+0.00 USDC</strong>
+        </div>
+        <div class="position-cell" style="--cell-index:3">
+          <span>My Vault Share</span>
+          <strong id="myVaultShare">0.00%</strong>
+        </div>
+      </div>
+      <div class="position-placeholder" id="positionPlaceholder">
+        <svg class="empty-wallet-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M19 7V6a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 6v12a2 2 0 0 0 2 2h16V10H5a2 2 0 0 1-2-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16 14h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="empty-title">Your position will appear here</p>
+        <p class="empty-copy">Deposit USDC to start earning yield on Arc.</p>
+        <button class="btn-primary" id="positionConnect" type="button">Connect Wallet</button>
+      </div>
+    </section>
+
+    <section class="activity reveal">
+      <div class="section-panel panel">
+        <div class="section-title" data-stagger style="--stagger:0">
+          <h2>Vault Activity</h2>
+          <span>Every tx visible on Arc explorer</span>
+        </div>
+        <div class="timeline" id="timeline">
+          <div class="tx-row" data-stagger style="--stagger:1">
+            <span class="tx-kind">Deposit</span>
+            <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/0xa91f37c2" target="_blank" rel="noopener noreferrer">0xa91f...37c2<span class="external-icon">↗</span></a> · minted yUSDC</span>
+            <span class="tx-amount">+250.00 USDC</span>
+          </div>
+          <div class="tx-row" data-stagger style="--stagger:2">
+            <span class="tx-kind">Supply</span>
+            <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/0xf33b90aa" target="_blank" rel="noopener noreferrer">0xf33b...90aa<span class="external-icon">↗</span></a> · Euler strategy</span>
+            <span class="tx-amount">+18,400.00 USDC</span>
+          </div>
+          <div class="tx-row" data-stagger style="--stagger:3">
+            <span class="tx-kind">Compound</span>
+            <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/0xc620b84d" target="_blank" rel="noopener noreferrer">0xc620...b84d<span class="external-icon">↗</span></a> · keeper run</span>
+            <span class="tx-amount">+0.82 USDC</span>
+          </div>
+          <div class="tx-row" data-stagger style="--stagger:4">
+            <span class="tx-kind">Withdraw</span>
+            <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/0x44df19e7" target="_blank" rel="noopener noreferrer">0x44df...19e7<span class="external-icon">↗</span></a> · burned yUSDC</span>
+            <span class="tx-amount">-90.00 yUSDC</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="section-panel panel">
+        <div class="section-title" data-stagger style="--stagger:0">
+          <h2>Keeper</h2>
+          <span>Vault Keeper</span>
+        </div>
+        <div class="bot-stack">
+          <div class="bot-card" data-stagger style="--stagger:1">
+            <span>Last rebalance</span>
+            <strong>2026-05-08 18:00 UTC</strong>
+          </div>
+          <div class="bot-card" data-stagger style="--stagger:2">
+            <span>Next compound</span>
+            <div class="compound-lines" id="nextCompound">
+              <strong>Daily at 18:00 UTC</strong>
+              <small>Triggers when yield &gt; 0.5 USDC</small>
+            </div>
+          </div>
+          <div class="bot-card" data-stagger style="--stagger:3">
+            <span>Strategy allocation</span>
+            <strong>100% Euler lending</strong>
+          </div>
+        </div>
+        <div class="email-preview" data-stagger style="--stagger:4">
+          <span class="metric-label">Weekly email preview</span>
+          <p>Your vault earned <strong id="weeklyEarned">5.74 USDC</strong> this week. Latest compound tx: <span class="tx-hash">0xc620...b84d</span></p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Built on Arc Testnet · USDC gas · Sub-second finality · <a href="https://arc.network" target="_blank" rel="noopener noreferrer">arc.network ↗</a>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <script>
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const canvas = document.getElementById('starfield');
+    const ctx = canvas.getContext('2d');
+    const starCount = 350;
+    const cyanStars = 8;
+    const ARC_TESTNET = {
+      chainId: '0x4CEF52',
+      chainName: 'Arc Testnet',
+      rpcUrls: ['https://rpc.testnet.arc.network'],
+      blockExplorerUrls: ['https://testnet.arcscan.app'],
+      nativeCurrency: {
+        name: 'USDC',
+        symbol: 'USDC',
+        decimals: 18
+      }
+    };
+    let stars = [];
+    let frameId = 0;
+    let connected = false;
+    let toastTimer = 0;
+
+    const appState = {
+      address: '0x7a42f083b1042ac08e5927d452c7ad23cb0ff19c',
+      walletUsdc: 1248.5,
+      vaultUsdc: 48210.42,
+      userShares: 384.22,
+      withdrawableUsdc: 384.9,
+      dayEarned: 0.82,
+      weeklyEarned: 5.74,
+      depositedUsdc: 385,
+      personalEarned: 5.74,
+      exchangeRate: 1.0032,
+      strategy: 'Lending',
+      health: 'Idle'
+    };
+
+    function sizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const oldWidth = canvas.width / (canvas.dataset.dpr || dpr) || window.innerWidth;
+      const oldHeight = canvas.height / (canvas.dataset.dpr || dpr) || window.innerHeight;
+      const nextWidth = window.innerWidth;
+      const nextHeight = window.innerHeight;
+
+      canvas.dataset.dpr = dpr;
+      canvas.width = Math.floor(nextWidth * dpr);
+      canvas.height = Math.floor(nextHeight * dpr);
+      canvas.style.width = `${nextWidth}px`;
+      canvas.style.height = `${nextHeight}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (stars.length) {
+        stars = stars.map((star) => ({
+          ...star,
+          x: (star.x / oldWidth) * nextWidth,
+          y: (star.y / oldHeight) * nextHeight
+        }));
+      } else {
+        seedStars(nextWidth, nextHeight);
+      }
+    }
+
+    function seedStars(width, height) {
+      stars = Array.from({ length: starCount }, (_, index) => {
+        const tier = Math.random();
+        const radius = tier > 0.975
+          ? randomBetween(1.5, 2.2)
+          : tier > 0.74
+            ? randomBetween(0.9, 1.4)
+            : randomBetween(0.4, 0.8);
+
+        return {
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius,
+          phase: Math.random() * Math.PI * 2,
+          speed: randomBetween(0.0004, 0.0012),
+          tint: index < cyanStars
+        };
+      }).sort(() => Math.random() - 0.5);
+    }
+
+    function randomBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function renderStars(time) {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      for (const star of stars) {
+        const wave = Math.sin(time * star.speed + star.phase);
+        const opacity = 0.2 + ((wave + 1) / 2) * 0.8;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fillStyle = star.tint
+          ? `rgba(79, 195, 247, ${Math.min(opacity, 0.8)})`
+          : `rgba(232, 234, 240, ${opacity})`;
+        ctx.fill();
+      }
+
+      frameId = requestAnimationFrame(renderStars);
+    }
+
+    function setupReveal() {
+      const sections = document.querySelectorAll('.reveal');
+
+      if (reduceMotion.matches) {
+        sections.forEach((section) => section.classList.add('is-visible'));
+        return;
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+
+      sections.forEach((section) => observer.observe(section));
+    }
+
+    function setupTabs() {
+      const triggers = document.querySelectorAll('[data-tab-trigger]');
+      let activeTab = 'deposit';
+
+      triggers.forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+          const nextTab = trigger.dataset.tabTrigger;
+          if (nextTab === activeTab) return;
+
+          const currentPanel = document.querySelector(`[data-tab-panel="${activeTab}"]`);
+          const nextPanel = document.querySelector(`[data-tab-panel="${nextTab}"]`);
+
+          triggers.forEach((button) => {
+            const selected = button.dataset.tabTrigger === nextTab;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-selected', String(selected));
+          });
+
+          currentPanel.classList.remove('active');
+          currentPanel.classList.add('exiting');
+
+          window.setTimeout(() => {
+            currentPanel.classList.remove('exiting');
+            nextPanel.classList.add('active');
+            activeTab = nextTab;
+          }, reduceMotion.matches ? 0 : 180);
+        });
+      });
+    }
+
+    function setupWallet() {
+      const connectButton = document.getElementById('connectWallet');
+      const positionConnect = document.getElementById('positionConnect');
+
+      connectButton.addEventListener('click', connectWallet);
+      positionConnect.addEventListener('click', connectWallet);
+
+      if (window.ethereum) {
+        window.ethereum.on?.('accountsChanged', (accounts) => {
+          if (!accounts.length) {
+            applyWalletConnectedState(false);
+            showToast('Wallet disconnected.');
+            return;
+          }
+
+          updateConnectedWallet(accounts[0]);
+        });
+
+        window.ethereum.on?.('chainChanged', async () => {
+          if (connected) {
+            await refreshWalletBalance();
+          }
+        });
+      }
+    }
+
+    async function connectWallet() {
+      const connectButton = document.getElementById('connectWallet');
+
+      if (!window.ethereum) {
+        showToast('No MetaMask wallet detected. Install MetaMask to connect.');
+        return;
+      }
+
+      if (!window.ethers) {
+        showToast('Wallet library is still loading. Try again in a moment.');
+        return;
+      }
+
+      try {
+        connectButton.disabled = true;
+        connectButton.classList.add('is-busy');
+        connectButton.textContent = 'Connecting';
+
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        await ensureArcTestnet();
+        await updateConnectedWallet(accounts[0]);
+      } catch (error) {
+        handleWalletError(error);
+      } finally {
+        connectButton.disabled = false;
+        connectButton.classList.remove('is-busy');
+        connectButton.textContent = connected ? 'Connected' : 'Connect Wallet';
+      }
+    }
+
+    async function ensureArcTestnet() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: ARC_TESTNET.chainId }]
+        });
+      } catch (error) {
+        if (error.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [ARC_TESTNET]
+          });
+          return;
+        }
+
+        throw error;
+      }
+    }
+
+    async function updateConnectedWallet(address) {
+      appState.address = address;
+      await refreshWalletBalance();
+      setWalletConnected(true);
+    }
+
+    async function refreshWalletBalance() {
+      if (!window.ethereum || !window.ethers || !appState.address) return;
+
+      try {
+        const provider = new window.ethers.BrowserProvider(window.ethereum);
+        const balance = await provider.getBalance(appState.address);
+        appState.walletUsdc = Number(window.ethers.formatEther(balance));
+        renderAppState();
+      } catch (error) {
+        showToast('Connected, but balance could not be loaded.');
+      }
+    }
+
+    function handleWalletError(error) {
+      if (error?.code === 4001) {
+        showToast('Wallet connection rejected.');
+        return;
+      }
+
+      if (error?.code === 4902) {
+        showToast('Arc Testnet was not added to your wallet.');
+        return;
+      }
+
+      if (String(error?.message || '').toLowerCase().includes('chain')) {
+        showToast('Could not switch to Arc Testnet.');
+        return;
+      }
+
+      showToast('Wallet connection failed. Please try again.');
+    }
+
+    function setWalletConnected(isConnected) {
+      const connectButton = document.getElementById('connectWallet');
+      const walletState = document.getElementById('walletState');
+      const positionPanel = document.getElementById('positionPanel');
+      const positionPlaceholder = document.getElementById('positionPlaceholder');
+
+      if (isConnected && !connected && !reduceMotion.matches) {
+        positionPlaceholder.classList.add('exiting');
+        window.setTimeout(() => {
+          applyWalletConnectedState(true);
+          positionPlaceholder.classList.remove('exiting');
+        }, 200);
+        return;
+      }
+
+      applyWalletConnectedState(isConnected);
+    }
+
+    function applyWalletConnectedState(isConnected) {
+      const connectButton = document.getElementById('connectWallet');
+      const walletState = document.getElementById('walletState');
+      const positionPanel = document.getElementById('positionPanel');
+
+      connected = isConnected;
+      document.body.classList.toggle('wallet-connected', connected);
+      walletState.classList.toggle('connected', connected);
+      connectButton.textContent = connected ? 'Connected' : 'Connect Wallet';
+      setHealth(connected ? 'Withdraw Ready' : 'Idle');
+      if (connected && !reduceMotion.matches) {
+        positionPanel.classList.remove('panel-enter');
+        void positionPanel.offsetWidth;
+        positionPanel.classList.add('panel-enter');
+      }
+      showToast(connected ? 'Wallet connected on Arc Testnet.' : 'Wallet disconnected.');
+      renderAppState();
+    }
+
+    function setHealth(nextHealth) {
+      appState.health = nextHealth;
+      const healthPill = document.getElementById('healthPill');
+      const className = nextHealth.toLowerCase().replace(/\s+/g, '-');
+      healthPill.className = `health-pill ${className}`;
+      healthPill.textContent = nextHealth;
+    }
+
+    function setupVaultActions() {
+      const depositInput = document.getElementById('depositAmount');
+      const withdrawInput = document.getElementById('withdrawAmount');
+      const depositAction = document.getElementById('depositAction');
+      const withdrawAction = document.getElementById('withdrawAction');
+      const depositMax = document.getElementById('depositMax');
+      const viewExplorer = document.getElementById('viewExplorer');
+      const withdrawConfirm = document.getElementById('withdrawConfirm');
+      const cancelWithdraw = document.getElementById('cancelWithdraw');
+      const confirmWithdraw = document.getElementById('confirmWithdraw');
+      const withdrawActions = withdrawAction.closest('.form-actions');
+
+      depositInput.addEventListener('input', renderAppState);
+      withdrawInput.addEventListener('input', renderAppState);
+      depositMax.addEventListener('click', () => {
+        depositInput.value = appState.walletUsdc.toFixed(2);
+        renderAppState();
+      });
+
+      depositAction.addEventListener('click', () => {
+        const amount = readPositiveAmount(depositInput.value);
+        if (!connected) {
+          connectWallet();
+          return;
+        }
+        if (!amount || amount > appState.walletUsdc) {
+          showToast('Enter an amount within your wallet balance.');
+          return;
+        }
+
+        setHealth('Supplying');
+        simulateTx(depositAction, 'Depositing', () => {
+          const minted = amount / appState.exchangeRate;
+          appState.walletUsdc -= amount;
+          appState.vaultUsdc += amount;
+          appState.userShares += minted;
+          appState.withdrawableUsdc += amount;
+          appState.depositedUsdc += amount;
+          appState.dayEarned += 0.03;
+          appState.weeklyEarned += 0.03;
+          appState.personalEarned += 0.03;
+          depositInput.value = Math.min(250, appState.walletUsdc).toFixed(2);
+          addActivity('Deposit', `+${formatNumber(amount, 2)} USDC`, 'minted yUSDC');
+          setHealth('Withdraw Ready');
+          renderAppState();
+          showToast('Deposit confirmed. yUSDC minted.');
+        });
+      });
+
+      withdrawAction.addEventListener('click', () => {
+        const shares = readPositiveAmount(withdrawInput.value);
+        if (!connected) {
+          showToast('Connect wallet before withdrawing.');
+          return;
+        }
+        if (!shares || shares > appState.userShares) {
+          showToast('Enter shares within your yUSDC balance.');
+          return;
+        }
+
+        showWithdrawConfirm(shares);
+      });
+
+      cancelWithdraw.addEventListener('click', () => {
+        hideWithdrawConfirm();
+      });
+
+      confirmWithdraw.addEventListener('click', () => {
+        const shares = readPositiveAmount(withdrawInput.value);
+        if (!shares || shares > appState.userShares) {
+          hideWithdrawConfirm();
+          showToast('Enter shares within your yUSDC balance.');
+          return;
+        }
+
+        setHealth('Withdraw Ready');
+        simulateTx(confirmWithdraw, 'Withdrawing', () => {
+          const usdcOut = shares * appState.exchangeRate;
+          appState.walletUsdc += usdcOut;
+          appState.vaultUsdc -= usdcOut;
+          appState.userShares -= shares;
+          appState.withdrawableUsdc -= Math.min(appState.withdrawableUsdc, usdcOut);
+          appState.depositedUsdc -= Math.min(appState.depositedUsdc, usdcOut);
+          withdrawInput.value = Math.min(120, appState.userShares).toFixed(2);
+          addActivity('Withdraw', `-${formatNumber(shares, 2)} yUSDC`, 'burned yUSDC');
+          hideWithdrawConfirm(true);
+          renderAppState();
+          showToast('Withdraw confirmed. USDC returned.');
+        });
+      });
+
+      viewExplorer.addEventListener('click', () => {
+        window.open('https://testnet.arcscan.app', '_blank', 'noopener,noreferrer');
+      });
+
+      function showWithdrawConfirm(shares) {
+        const usdcOut = shares * appState.exchangeRate;
+        document.getElementById('confirmBurn').textContent = `${formatNumber(shares, 2)} yUSDC`;
+        document.getElementById('confirmReceive').textContent = `${formatNumber(usdcOut, 2)} USDC`;
+        withdrawActions.style.display = 'none';
+        withdrawConfirm.classList.remove('exiting');
+        withdrawConfirm.classList.add('visible');
+      }
+
+      function hideWithdrawConfirm(immediate = false) {
+        if (!withdrawConfirm.classList.contains('visible') && !withdrawConfirm.classList.contains('exiting')) {
+          withdrawActions.style.display = '';
+          return;
+        }
+
+        if (immediate || reduceMotion.matches) {
+          withdrawConfirm.classList.remove('visible', 'exiting');
+          withdrawActions.style.display = '';
+          return;
+        }
+
+        withdrawConfirm.classList.remove('visible');
+        withdrawConfirm.classList.add('exiting');
+        window.setTimeout(() => {
+          withdrawConfirm.classList.remove('exiting');
+          withdrawActions.style.display = '';
+        }, 220);
+      }
+    }
+
+    function renderAppState() {
+      const depositInput = document.getElementById('depositAmount');
+      const withdrawInput = document.getElementById('withdrawAmount');
+      const depositAction = document.getElementById('depositAction');
+      const depositMax = document.getElementById('depositMax');
+      const depositAmount = readPositiveAmount(depositInput.value) || 0;
+      const withdrawShares = readPositiveAmount(withdrawInput.value) || 0;
+      const estimatedShares = depositAmount / appState.exchangeRate;
+      const estimatedWithdraw = withdrawShares * appState.exchangeRate;
+      const earnedPct = appState.depositedUsdc > 0 ? (appState.dayEarned / appState.depositedUsdc) * 100 : 0;
+      const vaultShare = appState.vaultUsdc > 0 ? (appState.depositedUsdc / appState.vaultUsdc) * 100 : 0;
+
+      depositInput.disabled = !connected;
+      depositAction.textContent = connected ? 'Deposit' : 'Connect Wallet to Deposit';
+      depositMax.hidden = !connected;
+
+      document.getElementById('walletAddress').textContent = truncateAddress(appState.address);
+      document.getElementById('walletBalance').textContent = `${formatNumber(appState.walletUsdc, 2)} USDC`;
+      document.getElementById('positionAddress').textContent = truncateAddress(appState.address);
+      document.getElementById('depositWalletBalance').textContent = `${formatNumber(appState.walletUsdc, 2)} USDC`;
+      document.getElementById('estimatedShares').textContent = formatNumber(estimatedShares, 2);
+      document.getElementById('userShares').textContent = `${formatNumber(appState.userShares, 2)} yUSDC`;
+      document.getElementById('withdrawableBalance').textContent = `${formatNumber(Math.min(appState.withdrawableUsdc, estimatedWithdraw || appState.withdrawableUsdc), 2)} USDC`;
+      document.getElementById('strategyState').textContent = appState.strategy;
+      document.getElementById('vaultMetric').textContent = formatNumber(appState.vaultUsdc, 0);
+      document.getElementById('earnedMetric').textContent = `+${formatNumber(appState.dayEarned, 2)}`;
+      document.getElementById('earnedContext').textContent = `≈ $${formatNumber(appState.dayEarned, 2)} · ${formatNumber(earnedPct, 4)}% of position`;
+      document.getElementById('weeklyEarned').textContent = `${formatNumber(appState.weeklyEarned, 2)} USDC`;
+      document.getElementById('exchangeRate').textContent = `1 yUSDC = ${formatNumber(appState.exchangeRate, 4)} USDC`;
+      document.getElementById('myDeposited').textContent = `${formatNumber(appState.depositedUsdc, 2)} USDC`;
+      document.getElementById('myShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
+      document.getElementById('myEarned').textContent = `+${formatNumber(appState.personalEarned, 2)} USDC`;
+      document.getElementById('myVaultShare').textContent = `${formatNumber(vaultShare, 2)}%`;
+    }
+
+    function simulateTx(button, label, onComplete) {
+      const original = button.textContent;
+      button.disabled = true;
+      button.classList.add('is-busy');
+      button.textContent = label;
+
+      window.setTimeout(() => {
+        onComplete();
+        button.disabled = false;
+        button.classList.remove('is-busy');
+        button.textContent = original;
+      }, reduceMotion.matches ? 150 : 850);
+    }
+
+    function addActivity(kind, amount, detail) {
+      const timeline = document.getElementById('timeline');
+      const hash = makeHash();
+      const row = document.createElement('div');
+      row.className = 'tx-row is-new';
+      row.innerHTML = `
+        <span class="tx-kind">${kind}</span>
+        <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/${hash}" target="_blank" rel="noopener noreferrer">${truncateHash(hash)}<span class="external-icon">↗</span></a> · ${detail}</span>
+        <span class="tx-amount">${amount}</span>
+      `;
+      timeline.prepend(row);
+
+      window.setTimeout(() => {
+        row.classList.remove('is-new');
+      }, reduceMotion.matches ? 150 : 900);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 2400);
+    }
+
+    function readPositiveAmount(value) {
+      const number = Number.parseFloat(String(value).replace(/,/g, ''));
+      return Number.isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function formatNumber(value, decimals) {
+      return value.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function truncateAddress(address) {
+      return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
+
+    function truncateHash(hash) {
+      return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+    }
+
+    function makeHash() {
+      const chars = '0123456789abcdef';
+      let hash = '0x';
+      for (let index = 0; index < 64; index += 1) {
+        hash += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return hash;
+    }
+
+    function setupKeeperClock() {
+      const updateClock = () => {
+        const now = new Date();
+        const nextRun = new Date(Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          18,
+          0,
+          0
+        ));
+        const nextCompound = document.getElementById('nextCompound');
+
+        if (now.getTime() >= nextRun.getTime()) {
+          nextRun.setUTCDate(nextRun.getUTCDate() + 1);
+          const remaining = Math.max(0, nextRun.getTime() - now.getTime());
+          const hours = Math.floor(remaining / 3600000);
+          const minutes = Math.floor((remaining % 3600000) / 60000);
+          const seconds = Math.floor((remaining % 60000) / 1000);
+          nextCompound.innerHTML = `
+            <strong>Next run in ${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s</strong>
+            <small>Triggers when yield &gt; 0.5 USDC</small>
+          `;
+          return;
+        }
+
+        nextCompound.innerHTML = `
+          <strong>Daily at 18:00 UTC</strong>
+          <small>Triggers when yield &gt; 0.5 USDC</small>
+        `;
+      };
+
+      updateClock();
+      window.setInterval(updateClock, 1000);
+    }
+
+    function setupCounters() {
+      const counters = document.querySelectorAll('[data-count]');
+
+      if (reduceMotion.matches) {
+        counters.forEach((counter) => {
+          const value = Number(counter.dataset.count);
+          counter.textContent = formatCounter(value, counter);
+        });
+        return;
+      }
+
+      const animateCounter = (counter) => {
+        const target = Number(counter.dataset.count);
+        const startTime = performance.now();
+        const duration = 1200;
+
+        function tick(now) {
+          const elapsed = Math.min((now - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - elapsed, 3);
+          counter.textContent = formatCounter(target * eased, counter);
+
+          if (elapsed < 1) {
+            requestAnimationFrame(tick);
+          }
+        }
+
+        requestAnimationFrame(tick);
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.6 });
+
+      counters.forEach((counter) => observer.observe(counter));
+    }
+
+    function formatCounter(value, element) {
+      const prefix = element.dataset.prefix || '';
+      const suffix = element.dataset.suffix || '';
+      const decimals = Math.abs(Number(element.dataset.count)) < 10 ? 2 : 0;
+      return `${prefix}${value.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      })}${suffix}`;
+    }
+
+    window.addEventListener('resize', sizeCanvas);
+    sizeCanvas();
+
+    if (!reduceMotion.matches) {
+      frameId = requestAnimationFrame(renderStars);
+    } else {
+      renderStars(0);
+      cancelAnimationFrame(frameId);
+    }
+
+    setupReveal();
+    setupTabs();
+    setupWallet();
+    setupVaultActions();
+    setupKeeperClock();
+    setupCounters();
+    renderAppState();
+  </script>
+</body>
+</html>
