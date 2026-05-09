@@ -130,6 +130,9 @@ contract ArcVault is Ownable, ReentrancyGuard {
         if (strategy_ == address(0)) revert ZeroAddress();
         strategy = IEulerLendingStrategy(strategy_);
         emit StrategyUpdated(strategy_);
+    }
+
+    function deployIdle() external onlyOwner nonReentrant {
         _deployIdle();
     }
 

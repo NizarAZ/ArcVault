@@ -15,6 +15,7 @@ contract MockEulerStrategy is IEulerLendingStrategy {
 
     IERC20 public immutable USDC;
     uint256 public harvestCount;
+    uint256 public simulatedYield;
 
     constructor(IERC20 usdc_) {
         USDC = usdc_;
@@ -25,20 +26,31 @@ contract MockEulerStrategy is IEulerLendingStrategy {
     }
 
     function withdraw(uint256 assets) external returns (uint256 withdrawn) {
-        withdrawn = assets;
+        uint256 balance = USDC.balanceOf(address(this));
+        withdrawn = assets > balance ? balance : assets;
+
+        if (withdrawn < assets) {
+            uint256 simulatedShortfall = assets - withdrawn;
+            simulatedYield = simulatedShortfall > simulatedYield ? 0 : simulatedYield - simulatedShortfall;
+        }
+
         USDC.safeTransfer(msg.sender, withdrawn);
     }
 
     function harvest() external returns (uint256 yieldAssets) {
         harvestCount += 1;
-        yieldAssets = USDC.balanceOf(address(this)) / 1000;
+        yieldAssets = totalAssets() / 1000;
 
         if (yieldAssets > 0) {
-            IMintableUSDC(address(USDC)).mint(address(this), yieldAssets);
+            (bool minted,) = address(USDC).call(abi.encodeCall(IMintableUSDC.mint, (address(this), yieldAssets)));
+
+            if (!minted) {
+                simulatedYield += yieldAssets;
+            }
         }
     }
 
-    function totalAssets() external view returns (uint256 assets) {
-        assets = USDC.balanceOf(address(this));
+    function totalAssets() public view returns (uint256 assets) {
+        assets = USDC.balanceOf(address(this)) + simulatedYield;
     }
 }

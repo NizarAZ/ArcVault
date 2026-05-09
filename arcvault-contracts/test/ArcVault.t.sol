@@ -8,12 +8,24 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {ArcVault, IEulerLendingStrategy} from "../src/ArcVault.sol";
 import {yUSDC} from "../src/yUSDC.sol";
+import {MockEulerStrategy as SourceMockEulerStrategy} from "../src/MockEulerStrategy.sol";
+import {ConfigureStrategy} from "../script/ConfigureStrategy.s.sol";
 
 contract MockUSDC is ERC20 {
     constructor() ERC20("Mock USDC", "USDC") {}
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
+    }
+
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
+}
+
+contract NonMintableUSDC is ERC20 {
+    constructor(address holder, uint256 amount) ERC20("Non-mintable USDC", "USDC") {
+        _mint(holder, amount);
     }
 
     function decimals() public pure override returns (uint8) {
@@ -54,6 +66,24 @@ contract MockEulerStrategy is IEulerLendingStrategy {
 
     function addYield(uint256 amount) external {
         usdc.mint(address(this), amount);
+    }
+}
+
+contract RevertingDepositStrategy is IEulerLendingStrategy {
+    function deposit(uint256) external pure {
+        revert("deposit disabled");
+    }
+
+    function withdraw(uint256) external pure returns (uint256 withdrawn) {
+        return withdrawn;
+    }
+
+    function harvest() external pure returns (uint256 yieldAssets) {
+        return yieldAssets;
+    }
+
+    function totalAssets() external pure returns (uint256 assets) {
+        return assets;
     }
 }
 
@@ -123,5 +153,76 @@ contract ArcVaultTest is Test {
         uint256 yieldAssets = vault.compound();
 
         assertEq(yieldAssets, 5e6);
+    }
+
+    function testSetStrategyDoesNotDeployIdleOrRevertWhenVaultHasIdle() public {
+        yUSDC idleReceipt = new yUSDC(address(this), 6);
+        ArcVault idleVault = new ArcVault(IERC20(address(usdc)), idleReceipt, keeper, address(0), address(this));
+        idleReceipt.setVault(address(idleVault));
+
+        vm.prank(user);
+        usdc.approve(address(idleVault), type(uint256).max);
+
+        vm.prank(user);
+        idleVault.deposit(100e6);
+
+        assertEq(usdc.balanceOf(address(idleVault)), 100e6);
+
+        RevertingDepositStrategy revertingStrategy = new RevertingDepositStrategy();
+        idleVault.setStrategy(address(revertingStrategy));
+
+        assertEq(address(idleVault.strategy()), address(revertingStrategy));
+        assertEq(usdc.balanceOf(address(idleVault)), 100e6);
+    }
+
+    function testDeployIdleExplicitlyMovesFundsAfterStrategySet() public {
+        yUSDC idleReceipt = new yUSDC(address(this), 6);
+        MockEulerStrategy nextStrategy = new MockEulerStrategy(usdc);
+        ArcVault idleVault = new ArcVault(IERC20(address(usdc)), idleReceipt, keeper, address(0), address(this));
+        idleReceipt.setVault(address(idleVault));
+
+        vm.prank(user);
+        usdc.approve(address(idleVault), type(uint256).max);
+
+        vm.prank(user);
+        idleVault.deposit(100e6);
+
+        idleVault.setStrategy(address(nextStrategy));
+        assertEq(usdc.balanceOf(address(idleVault)), 100e6);
+        assertEq(usdc.balanceOf(address(nextStrategy)), 0);
+
+        idleVault.deployIdle();
+
+        assertEq(usdc.balanceOf(address(idleVault)), 0);
+        assertEq(usdc.balanceOf(address(nextStrategy)), 100e6);
+        assertEq(idleVault.totalAssets(), 100e6);
+    }
+
+    function testConfigureScriptAcceptsRealVaultAndReturnsReceiptToken() public {
+        ConfigureStrategy configure = new ConfigureStrategy();
+
+        address linkedReceipt = configure.validateVault(address(vault));
+
+        assertEq(linkedReceipt, address(receiptToken));
+    }
+
+    function testConfigureScriptRejectsYusdcAddressAsVault() public {
+        ConfigureStrategy configure = new ConfigureStrategy();
+
+        vm.expectRevert(abi.encodeWithSelector(ConfigureStrategy.InvalidVaultAddress.selector, address(receiptToken)));
+        configure.validateVault(address(receiptToken));
+    }
+
+    function testSourceMockHarvestDoesNotRevertWithNonMintableUsdc() public {
+        NonMintableUSDC nonMintableUsdc = new NonMintableUSDC(address(this), 100e6);
+        SourceMockEulerStrategy sourceStrategy = new SourceMockEulerStrategy(IERC20(address(nonMintableUsdc)));
+
+        nonMintableUsdc.transfer(address(sourceStrategy), 100e6);
+
+        uint256 yieldAssets = sourceStrategy.harvest();
+
+        assertEq(yieldAssets, 100_000);
+        assertEq(sourceStrategy.simulatedYield(), 100_000);
+        assertEq(sourceStrategy.totalAssets(), 100_100_000);
     }
 }
