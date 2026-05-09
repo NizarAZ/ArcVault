@@ -24,7 +24,7 @@ Deposits are routed through an Euler lending strategy. Yield is compounded by a 
 
 | yUSDC    | `0x3e96A71FFdFb947239224568CfDFD445357ABD9D` |
 
-| MockEulerStrategy | `0x24267FEF37e408C750F3757284c35e138ee2f6d2` |
+| MockEulerStrategy | `0x1Fdf6E91fdB0091017B4126f80431C41b94a66B3` |
 
 \## How to Test
 
