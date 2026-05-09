@@ -521,11 +521,24 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
+      overflow-y: auto;
+      padding-right: 4px;
       opacity: 0;
       pointer-events: none;
       transform: translateX(12px);
       transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
         transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      scrollbar-color: rgba(232, 234, 240, 0.16) transparent;
+      scrollbar-width: thin;
+    }
+
+    .tab-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tab-panel::-webkit-scrollbar-thumb {
+      border-radius: var(--radius-full);
+      background: rgba(232, 234, 240, 0.14);
     }
 
     .tab-panel.exiting {
@@ -876,7 +889,6 @@
     .withdraw-confirm {
       display: none;
       gap: 12px;
-      margin-top: auto;
       padding: 14px;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-md);
@@ -1113,6 +1125,10 @@
       gap: 12px;
     }
 
+    .keeper-action {
+      width: 100%;
+    }
+
     .bot-card {
       padding: 16px;
       border: 1px solid var(--color-border);
@@ -1153,21 +1169,6 @@
     .compound-lines small {
       color: var(--color-text-muted);
       font-size: 12px;
-    }
-
-    .email-preview {
-      margin-top: 14px;
-      padding: 16px;
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      background: rgba(4, 6, 13, 0.54);
-    }
-
-    .email-preview p {
-      margin: 8px 0 0;
-      color: var(--color-text-muted);
-      font-size: 14px;
-      line-height: 1.5;
     }
 
     .footer {
@@ -1612,7 +1613,7 @@
             </div>
             <div class="form-actions">
               <button class="btn-primary" id="withdrawAction" type="button">Withdraw</button>
-              <button class="btn-secondary" id="viewExplorer" type="button">View on Explorer</button>
+              <button class="btn-secondary" id="withdrawMax" type="button">MAX</button>
             </div>
             <div class="withdraw-confirm" id="withdrawConfirm" aria-live="polite">
               <p class="confirm-title">Confirm withdrawal</p>
@@ -1672,7 +1673,7 @@
           <span>Every tx visible on Arc explorer</span>
         </div>
         <div class="timeline" id="timeline">
-          <div class="tx-empty" data-stagger style="--stagger:1">Contract not yet deployed · Activity will appear here</div>
+          <div class="tx-empty" data-stagger style="--stagger:1">New vault activity will appear here</div>
         </div>
       </div>
 
@@ -1696,10 +1697,7 @@
             <span>Strategy allocation</span>
             <strong>100% Euler lending</strong>
           </div>
-        </div>
-        <div class="email-preview" data-stagger style="--stagger:4">
-          <span class="metric-label">Weekly email preview</span>
-          <p>Your vault earned <strong id="weeklyEarned">--</strong> this week. Latest compound tx: <span class="tx-hash">--</span></p>
+          <button class="btn-primary keeper-action" id="compoundAction" type="button" hidden>Compound</button>
         </div>
       </aside>
     </section>
@@ -1729,26 +1727,53 @@
         decimals: 18
       }
     };
+    const ARCVAULT_ADDRESS = '0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e';
+    const YUSDC_ADDRESS = '0x3e96A71FFdFb947239224568CfDFD445357ABD9D';
+    const ARC_USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
+    const TOKEN_DECIMALS = 6;
+    const ARCVAULT_ABI = [
+      'function deposit(uint256 amount) returns (uint256 shares)',
+      'function withdraw(uint256 shares) returns (uint256 assets)',
+      'function compound() returns (uint256 yieldAssets)',
+      'function totalAssets() view returns (uint256 assets)',
+      'function convertToShares(uint256 assets) view returns (uint256 shares)',
+      'function convertToAssets(uint256 shares) view returns (uint256 assets)',
+      'function keeper() view returns (address)',
+      'event Deposited(address indexed user, uint256 assets, uint256 shares)',
+      'event Withdrawn(address indexed user, uint256 assets, uint256 shares)',
+      'event Compounded(address indexed keeper, uint256 yieldAssets, uint256 totalAssetsAfter)'
+    ];
+    const YUSDC_ABI = [
+      'function balanceOf(address account) view returns (uint256)',
+      'function totalSupply() view returns (uint256)',
+      'function decimals() view returns (uint8)'
+    ];
+    const USDC_ABI = [
+      'function allowance(address owner, address spender) view returns (uint256)',
+      'function approve(address spender, uint256 value) returns (bool)'
+    ];
+    const READ_PROVIDER = new window.ethers.JsonRpcProvider(ARC_TESTNET.rpcUrls[0]);
     let stars = [];
     let frameId = 0;
     let connected = false;
     let toastTimer = 0;
 
     const appState = {
-      contractDeployed: false,
-      address: '0x7a42f083b1042ac08e5927d452c7ad23cb0ff19c',
-      walletUsdc: 1248.5,
-      vaultUsdc: null,
+      contractDeployed: true,
+      address: '',
+      walletUsdc: 0,
+      vaultUsdc: 0,
       netApy: null,
-      userShares: null,
-      withdrawableUsdc: null,
+      userShares: 0,
+      withdrawableUsdc: 0,
       dayEarned: null,
-      weeklyEarned: null,
-      depositedUsdc: null,
-      personalEarned: null,
-      exchangeRate: 1.0032,
+      depositedUsdc: 0,
+      personalEarned: 0,
+      exchangeRate: 1,
       strategy: 'Lending',
-      health: 'Idle'
+      health: 'Idle',
+      isKeeper: false,
+      keeper: ''
     };
 
     function sizeCanvas() {
@@ -1889,7 +1914,7 @@
 
         window.ethereum.on?.('chainChanged', async () => {
           if (connected) {
-            await refreshWalletBalance();
+            await refreshOnchainState();
           }
         });
       }
@@ -1946,20 +1971,69 @@
 
     async function updateConnectedWallet(address) {
       appState.address = address;
-      await refreshWalletBalance();
+      await refreshOnchainState();
       setWalletConnected(true);
     }
 
     async function refreshWalletBalance() {
-      if (!window.ethereum || !window.ethers || !appState.address) return;
+      await refreshOnchainState();
+    }
+
+    function getReadContracts() {
+      return {
+        vault: new window.ethers.Contract(ARCVAULT_ADDRESS, ARCVAULT_ABI, READ_PROVIDER),
+        yusdc: new window.ethers.Contract(YUSDC_ADDRESS, YUSDC_ABI, READ_PROVIDER)
+      };
+    }
+
+    async function getWriteContracts() {
+      const provider = new window.ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      return {
+        provider,
+        signer,
+        vault: new window.ethers.Contract(ARCVAULT_ADDRESS, ARCVAULT_ABI, signer),
+        yusdc: new window.ethers.Contract(YUSDC_ADDRESS, YUSDC_ABI, signer),
+        usdc: new window.ethers.Contract(ARC_USDC_ADDRESS, USDC_ABI, signer)
+      };
+    }
+
+    async function refreshOnchainState() {
+      if (!window.ethers) return;
 
       try {
-        const provider = new window.ethers.BrowserProvider(window.ethereum);
-        const balance = await provider.getBalance(appState.address);
-        appState.walletUsdc = Number(window.ethers.formatEther(balance));
+        const { vault, yusdc } = getReadContracts();
+        const reads = [vault.totalAssets(), yusdc.totalSupply(), vault.keeper()];
+
+        if (appState.address) {
+          reads.push(READ_PROVIDER.getBalance(appState.address), yusdc.balanceOf(appState.address));
+        }
+
+        const [totalAssets, totalSupply, keeperAddress, nativeBalance = 0n, sharesBalance = 0n] = await Promise.all(reads);
+
+        appState.vaultUsdc = Number(window.ethers.formatUnits(totalAssets, TOKEN_DECIMALS));
+        appState.walletUsdc = appState.address ? Number(window.ethers.formatEther(nativeBalance)) : appState.walletUsdc;
+        appState.userShares = appState.address ? Number(window.ethers.formatUnits(sharesBalance, TOKEN_DECIMALS)) : appState.userShares;
+        appState.withdrawableUsdc = appState.userShares > 0
+          ? Number(window.ethers.formatUnits(await vault.convertToAssets(sharesBalance), TOKEN_DECIMALS))
+          : 0;
+        appState.depositedUsdc = appState.withdrawableUsdc;
+        appState.personalEarned = Math.max(0, appState.withdrawableUsdc - appState.depositedUsdc);
+        appState.exchangeRate = totalSupply > 0n
+          ? Number(window.ethers.formatUnits((totalAssets * 1000000n) / totalSupply, TOKEN_DECIMALS))
+          : 1;
+        appState.keeper = keeperAddress;
+        appState.isKeeper = Boolean(
+          appState.address &&
+          keeperAddress &&
+          appState.address.toLowerCase() === keeperAddress.toLowerCase()
+        );
+        appState.contractDeployed = true;
         renderAppState();
       } catch (error) {
-        showToast('Connected, but balance could not be loaded.');
+        console.error(error);
+        showToast('Connected, but vault data could not be loaded.');
       }
     }
 
@@ -2033,7 +2107,8 @@
       const depositAction = document.getElementById('depositAction');
       const withdrawAction = document.getElementById('withdrawAction');
       const depositMax = document.getElementById('depositMax');
-      const viewExplorer = document.getElementById('viewExplorer');
+      const withdrawMax = document.getElementById('withdrawMax');
+      const compoundAction = document.getElementById('compoundAction');
       const withdrawConfirm = document.getElementById('withdrawConfirm');
       const cancelWithdraw = document.getElementById('cancelWithdraw');
       const confirmWithdraw = document.getElementById('confirmWithdraw');
@@ -2046,14 +2121,10 @@
         renderAppState();
       });
 
-      depositAction.addEventListener('click', () => {
+      depositAction.addEventListener('click', async () => {
         const amount = readPositiveAmount(depositInput.value);
         if (!connected) {
           connectWallet();
-          return;
-        }
-        if (!appState.contractDeployed) {
-          showToast('Contract not yet deployed.');
           return;
         }
         if (!amount || amount > appState.walletUsdc) {
@@ -2061,23 +2132,7 @@
           return;
         }
 
-        setHealth('Supplying');
-        simulateTx(depositAction, 'Depositing', () => {
-          const minted = amount / appState.exchangeRate;
-          appState.walletUsdc -= amount;
-          appState.vaultUsdc += amount;
-          appState.userShares += minted;
-          appState.withdrawableUsdc += amount;
-          appState.depositedUsdc += amount;
-          appState.dayEarned += 0.03;
-          appState.weeklyEarned += 0.03;
-          appState.personalEarned += 0.03;
-          depositInput.value = Math.min(250, appState.walletUsdc).toFixed(2);
-          addActivity('Deposit', `+${formatNumber(amount, 2)} USDC`, 'minted yUSDC');
-          setHealth('Withdraw Ready');
-          renderAppState();
-          showToast('Deposit confirmed. yUSDC minted.');
-        });
+        await runDeposit(amount, depositAction);
       });
 
       withdrawAction.addEventListener('click', () => {
@@ -2102,7 +2157,7 @@
         hideWithdrawConfirm();
       });
 
-      confirmWithdraw.addEventListener('click', () => {
+      confirmWithdraw.addEventListener('click', async () => {
         const shares = readPositiveAmount(withdrawInput.value);
         if (!shares || shares > appState.userShares) {
           hideWithdrawConfirm();
@@ -2110,24 +2165,33 @@
           return;
         }
 
-        setHealth('Withdraw Ready');
-        simulateTx(confirmWithdraw, 'Withdrawing', () => {
-          const usdcOut = shares * appState.exchangeRate;
-          appState.walletUsdc += usdcOut;
-          appState.vaultUsdc -= usdcOut;
-          appState.userShares -= shares;
-          appState.withdrawableUsdc -= Math.min(appState.withdrawableUsdc, usdcOut);
-          appState.depositedUsdc -= Math.min(appState.depositedUsdc, usdcOut);
-          withdrawInput.value = Math.min(120, appState.userShares).toFixed(2);
-          addActivity('Withdraw', `-${formatNumber(shares, 2)} yUSDC`, 'burned yUSDC');
-          hideWithdrawConfirm(true);
-          renderAppState();
-          showToast('Withdraw confirmed. USDC returned.');
-        });
+        await runWithdraw(shares, confirmWithdraw, () => hideWithdrawConfirm(true));
       });
 
-      viewExplorer.addEventListener('click', () => {
-        window.open('https://testnet.arcscan.app', '_blank', 'noopener,noreferrer');
+      withdrawMax.addEventListener('click', async () => {
+        if (!connected || !appState.address) {
+          showToast('Connect wallet before setting max withdrawal.');
+          return;
+        }
+
+        try {
+          setButtonBusy(withdrawMax, '...');
+          const { yusdc } = getReadContracts();
+          const shares = await yusdc.balanceOf(appState.address);
+          const formattedShares = window.ethers.formatUnits(shares, TOKEN_DECIMALS);
+          withdrawInput.value = trimTokenAmount(formattedShares, 6);
+          appState.userShares = Number(formattedShares);
+          renderAppState();
+        } catch (error) {
+          console.error(error);
+          showToast('Could not read yUSDC balance.');
+        } finally {
+          clearButtonBusy(withdrawMax, 'MAX');
+        }
+      });
+
+      compoundAction.addEventListener('click', async () => {
+        await runCompound(compoundAction);
       });
 
       function showWithdrawConfirm(shares) {
@@ -2160,11 +2224,119 @@
       }
     }
 
+    async function runDeposit(amount, button) {
+      const parsedAmount = window.ethers.parseUnits(String(amount), TOKEN_DECIMALS);
+      setHealth('Supplying');
+      setButtonBusy(button, 'Approving');
+
+      try {
+        const { usdc, vault } = await getWriteContracts();
+        const allowance = await usdc.allowance(appState.address, ARCVAULT_ADDRESS);
+
+        if (allowance < parsedAmount) {
+          const approveTx = await usdc.approve(ARCVAULT_ADDRESS, parsedAmount);
+          showToast('Approval submitted. Waiting for confirmation.');
+          await approveTx.wait();
+        }
+
+        setButtonBusy(button, 'Depositing');
+        const tx = await vault.deposit(parsedAmount);
+        showToast('Deposit submitted. Waiting for Arc confirmation.');
+        await tx.wait();
+
+        addActivity('Deposit', `+${formatNumber(amount, 2)} USDC`, 'minted yUSDC', tx.hash);
+        await refreshOnchainState();
+        document.getElementById('depositAmount').value = Math.min(250, appState.walletUsdc).toFixed(2);
+        setHealth('Withdraw Ready');
+        showToast('Deposit confirmed. yUSDC minted.');
+      } catch (error) {
+        console.error(error);
+        setHealth('Withdraw Ready');
+        handleTxError(error, 'Deposit failed.');
+      } finally {
+        clearButtonBusy(button, connected ? 'Deposit' : 'Connect Wallet to Deposit');
+      }
+    }
+
+    async function runWithdraw(shares, button, onConfirmed) {
+      const parsedShares = window.ethers.parseUnits(String(shares), TOKEN_DECIMALS);
+      setHealth('Withdraw Ready');
+      setButtonBusy(button, 'Withdrawing');
+
+      try {
+        const { vault } = await getWriteContracts();
+        const tx = await vault.withdraw(parsedShares);
+        showToast('Withdrawal submitted. Waiting for Arc confirmation.');
+        await tx.wait();
+
+        addActivity('Withdraw', `-${formatNumber(shares, 2)} yUSDC`, 'burned yUSDC', tx.hash);
+        if (onConfirmed) onConfirmed();
+        await refreshOnchainState();
+        document.getElementById('withdrawAmount').value = Math.min(120, appState.userShares).toFixed(2);
+        showToast('Withdraw confirmed. USDC returned.');
+      } catch (error) {
+        console.error(error);
+        handleTxError(error, 'Withdraw failed.');
+      } finally {
+        clearButtonBusy(button, 'Confirm');
+      }
+    }
+
+    async function runCompound(button) {
+      if (!appState.isKeeper) return;
+
+      setHealth('Compounding');
+      setButtonBusy(button, 'Compounding');
+
+      try {
+        const { vault } = await getWriteContracts();
+        const tx = await vault.compound();
+        showToast('Compound submitted. Waiting for Arc confirmation.');
+        await tx.wait();
+
+        addActivity('Compound', 'Yield reinvested', 'keeper executed', tx.hash);
+        await refreshOnchainState();
+        setHealth('Withdraw Ready');
+        showToast('Compound confirmed.');
+      } catch (error) {
+        console.error(error);
+        setHealth('Withdraw Ready');
+        handleTxError(error, 'Compound failed.');
+      } finally {
+        clearButtonBusy(button, 'Compound');
+      }
+    }
+
+    function setButtonBusy(button, label) {
+      button.disabled = true;
+      button.classList.add('is-busy');
+      button.textContent = label;
+    }
+
+    function clearButtonBusy(button, label) {
+      button.disabled = false;
+      button.classList.remove('is-busy');
+      button.textContent = label;
+    }
+
+    function handleTxError(error, fallback) {
+      if (error?.code === 4001 || String(error?.message || '').toLowerCase().includes('rejected')) {
+        showToast('Transaction rejected.');
+        return;
+      }
+
+      const reason = error?.shortMessage || error?.reason || error?.message || '';
+      showToast(reason ? `${fallback} ${reason}` : fallback);
+    }
+
     function renderAppState() {
       const depositInput = document.getElementById('depositAmount');
       const withdrawInput = document.getElementById('withdrawAmount');
       const depositAction = document.getElementById('depositAction');
       const depositMax = document.getElementById('depositMax');
+      const withdrawAction = document.getElementById('withdrawAction');
+      const withdrawMax = document.getElementById('withdrawMax');
+      const compoundAction = document.getElementById('compoundAction');
       const depositAmount = readPositiveAmount(depositInput.value) || 0;
       const withdrawShares = readPositiveAmount(withdrawInput.value) || 0;
       const estimatedShares = depositAmount / appState.exchangeRate;
@@ -2173,27 +2345,30 @@
       const vaultShare = appState.vaultUsdc > 0 ? (appState.depositedUsdc / appState.vaultUsdc) * 100 : 0;
 
       depositInput.disabled = !connected;
+      withdrawInput.disabled = !connected;
       depositAction.textContent = connected ? 'Deposit' : 'Connect Wallet to Deposit';
       depositMax.hidden = !connected;
+      withdrawAction.disabled = !connected;
+      withdrawMax.disabled = !connected;
+      compoundAction.hidden = !appState.isKeeper;
 
-      document.getElementById('walletAddress').textContent = truncateAddress(appState.address);
-      document.getElementById('walletBalance').textContent = `${formatNumber(appState.walletUsdc, 2)} USDC`;
-      document.getElementById('positionAddress').textContent = truncateAddress(appState.address);
+      document.getElementById('walletAddress').textContent = appState.address ? truncateAddress(appState.address) : '--';
+      document.getElementById('walletBalance').textContent = `${formatNumber(appState.walletUsdc, 2)} USDC · ${formatNumber(appState.userShares, 4)} yUSDC`;
+      document.getElementById('positionAddress').textContent = appState.address ? truncateAddress(appState.address) : '--';
       document.getElementById('depositWalletBalance').textContent = `${formatNumber(appState.walletUsdc, 2)} USDC`;
-      document.getElementById('estimatedShares').textContent = appState.contractDeployed ? formatNumber(estimatedShares, 2) : '--';
-      document.getElementById('userShares').textContent = appState.contractDeployed ? `${formatNumber(appState.userShares, 2)} yUSDC` : '--';
-      document.getElementById('withdrawableBalance').textContent = appState.contractDeployed ? `${formatNumber(Math.min(appState.withdrawableUsdc, estimatedWithdraw || appState.withdrawableUsdc), 2)} USDC` : '--';
+      document.getElementById('estimatedShares').textContent = depositAmount > 0 ? `${formatNumber(estimatedShares, 4)} yUSDC` : '--';
+      document.getElementById('userShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
+      document.getElementById('withdrawableBalance').textContent = `${formatNumber(estimatedWithdraw || appState.withdrawableUsdc, 2)} USDC`;
       document.getElementById('strategyState').textContent = appState.strategy;
-      document.getElementById('vaultMetric').textContent = appState.contractDeployed ? formatNumber(appState.vaultUsdc, 0) : '--';
+      document.getElementById('vaultMetric').textContent = `${formatNumber(appState.vaultUsdc, 2)}`;
       document.getElementById('apyMetric').textContent = appState.contractDeployed && appState.netApy !== null ? `${formatNumber(appState.netApy, 2)}%` : '--';
-      document.getElementById('earnedMetric').textContent = appState.contractDeployed ? `+${formatNumber(appState.dayEarned, 2)}` : '--';
-      document.getElementById('earnedContext').textContent = appState.contractDeployed ? `≈ $${formatNumber(appState.dayEarned, 2)} · ${formatNumber(earnedPct, 4)}% of position` : '--';
-      document.getElementById('weeklyEarned').textContent = appState.contractDeployed ? `${formatNumber(appState.weeklyEarned, 2)} USDC` : '--';
+      document.getElementById('earnedMetric').textContent = appState.dayEarned !== null ? `+${formatNumber(appState.dayEarned, 2)}` : '--';
+      document.getElementById('earnedContext').textContent = appState.dayEarned !== null ? `≈ $${formatNumber(appState.dayEarned, 2)} · ${formatNumber(earnedPct, 4)}% of position` : '--';
       document.getElementById('exchangeRate').textContent = `1 yUSDC = ${formatNumber(appState.exchangeRate, 4)} USDC`;
-      document.getElementById('myDeposited').textContent = appState.contractDeployed ? `${formatNumber(appState.depositedUsdc, 2)} USDC` : '--';
-      document.getElementById('myShares').textContent = appState.contractDeployed ? `${formatNumber(appState.userShares, 4)} yUSDC` : '--';
-      document.getElementById('myEarned').textContent = appState.contractDeployed ? `+${formatNumber(appState.personalEarned, 2)} USDC` : '--';
-      document.getElementById('myVaultShare').textContent = appState.contractDeployed ? `${formatNumber(vaultShare, 2)}%` : '--';
+      document.getElementById('myDeposited').textContent = `${formatNumber(appState.depositedUsdc, 2)} USDC`;
+      document.getElementById('myShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
+      document.getElementById('myEarned').textContent = `+${formatNumber(appState.personalEarned, 2)} USDC`;
+      document.getElementById('myVaultShare').textContent = `${formatNumber(vaultShare, 2)}%`;
     }
 
     function simulateTx(button, label, onComplete) {
@@ -2210,9 +2385,9 @@
       }, reduceMotion.matches ? 150 : 850);
     }
 
-    function addActivity(kind, amount, detail) {
+    function addActivity(kind, amount, detail, txHash) {
       const timeline = document.getElementById('timeline');
-      const hash = makeHash();
+      const hash = txHash || makeHash();
       const row = document.createElement('div');
       row.className = 'tx-row is-new';
       row.innerHTML = `
@@ -2255,6 +2430,12 @@
 
     function truncateHash(hash) {
       return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+    }
+
+    function trimTokenAmount(value, maxDecimals) {
+      const [whole, fraction = ''] = String(value).split('.');
+      const trimmedFraction = fraction.slice(0, maxDecimals).replace(/0+$/, '');
+      return trimmedFraction ? `${whole}.${trimmedFraction}` : whole;
     }
 
     function makeHash() {
@@ -2374,6 +2555,7 @@
     setupKeeperClock();
     setupCounters();
     renderAppState();
+    refreshOnchainState();
   </script>
 </body>
 </html>
