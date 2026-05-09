@@ -1698,17 +1698,17 @@
       <aside class="section-panel panel">
         <div class="section-title" data-stagger style="--stagger:0">
           <h2>Keeper</h2>
-          <span>Vault Keeper</span>
+          <span>Euler Strategy · Live</span>
         </div>
         <div class="bot-stack">
           <div class="bot-card" data-stagger style="--stagger:1">
             <span>Last rebalance</span>
-            <strong>Pending deployment</strong>
+            <strong>Active</strong>
           </div>
           <div class="bot-card" data-stagger style="--stagger:2">
             <span>Next compound</span>
             <div class="compound-lines" id="nextCompound">
-              <strong>Pending deployment</strong>
+              <strong>Active</strong>
             </div>
           </div>
           <div class="bot-card" data-stagger style="--stagger:3">
@@ -1748,6 +1748,7 @@
     const ARCVAULT_ADDRESS = '0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e';
     const YUSDC_ADDRESS = '0x3e96A71FFdFb947239224568CfDFD445357ABD9D';
     const ARC_USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
+    const STRATEGY_ADDRESS = '0x24267FEF37e408C750F3757284c35e138ee2f6d2';
     const TOKEN_DECIMALS = 6;
     const ARCVAULT_ABI = [
       'function deposit(uint256 amount) returns (uint256 shares)',
@@ -2029,6 +2030,10 @@
         }
 
         const [totalAssets, totalSupply, keeperAddress, nativeBalance = 0n, sharesBalance = 0n] = await Promise.all(reads);
+        const STRATEGY_ABI = ['function totalAssets() view returns (uint256)'];
+        const strategyContract = new window.ethers.Contract(STRATEGY_ADDRESS, STRATEGY_ABI, READ_PROVIDER);
+        const strategyAssets = await strategyContract.totalAssets();
+        console.log('Strategy assets:', window.ethers.formatUnits(strategyAssets, 6), 'USDC');
 
         appState.vaultUsdc = Number(window.ethers.formatUnits(totalAssets, TOKEN_DECIMALS));
         appState.walletUsdc = appState.address ? Number(window.ethers.formatEther(nativeBalance)) : appState.walletUsdc;
@@ -2466,11 +2471,6 @@
     }
 
     function setupKeeperClock() {
-      if (!appState.contractDeployed) {
-        document.getElementById('nextCompound').innerHTML = '<strong>Pending deployment</strong>';
-        return;
-      }
-
       const updateClock = () => {
         const now = new Date();
         const nextRun = new Date(Date.UTC(
@@ -2497,7 +2497,7 @@
         }
 
         nextCompound.innerHTML = `
-          <strong>Pending deployment</strong>
+          <strong>Active</strong>
         `;
       };
 
