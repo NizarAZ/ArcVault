@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArcVault â€” USDC Yield Vault on Arc Testnet</title>
-  <meta property="og:title" content="ArcVault â€” USDC Yield Vault on Arc Testnet">
+  <title>ArcVault — USDC Yield Vault on Arc Testnet</title>
+  <meta property="og:title" content="ArcVault — USDC Yield Vault on Arc Testnet">
   <meta property="og:description" content="Deposit USDC, mint yUSDC, and earn yield via Euler lending on Arc Testnet. Transparent vault with automated keeper and sub-second finality.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ArcVault â€” USDC Yield Vault on Arc Testnet">
+  <meta name="twitter:title" content="ArcVault — USDC Yield Vault on Arc Testnet">
   <meta name="twitter:description" content="One vault. One strategy. Full signal. Built on Arc Testnet.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none'><path d='M10 90 Q10 10 50 10 Q90 10 90 90' stroke='%234fc3f7' stroke-width='8' fill='none'/><path d='M30 90 Q30 55 50 55 Q70 55 70 90' stroke='%234fc3f7' stroke-width='6' fill='none'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -644,6 +644,23 @@
       font-size: 13px;
       font-weight: 500;
       text-align: right;
+    }
+
+    .faucet-link {
+      display: inline-flex;
+      width: fit-content;
+      margin: -2px 0 4px;
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-decoration: none;
+      transition: color 180ms ease, opacity 180ms ease;
+    }
+
+    .faucet-link:hover,
+    .faucet-link:focus-visible {
+      color: var(--color-primary);
+      outline: none;
     }
 
     .tooltip-wrap {
@@ -1524,7 +1541,7 @@
         <h1 class="brand-name">ArcVault</h1>
       </div>
       <div class="header-actions">
-        <div class="network-pill">Arc Testnet Â· Chain 5042002 Â· Gas: USDC</div>
+        <div class="network-pill">Arc Testnet · Chain 5042002 · Gas: USDC</div>
         <div class="wallet-state" id="walletState">
           <span id="walletAddress">0x7a42...f19c</span>
           <span id="walletBalance">1,248.50 USDC</span>
@@ -1548,7 +1565,7 @@
           <div class="metric" data-stagger style="--stagger:4">
             <span class="metric-value" id="apyMetric">--</span>
             <span class="metric-label">Net APY</span>
-            <span class="metric-subtext">Sourced from <a href="https://euler.finance" target="_blank" rel="noopener noreferrer">Euler</a> Â· Arc Testnet Â· Updated 4h ago</span>
+            <span class="metric-subtext">Sourced from <a href="https://euler.finance" target="_blank" rel="noopener noreferrer">Euler</a> · Arc Testnet · Updated 4h ago</span>
           </div>
           <div class="metric" data-stagger style="--stagger:5">
             <span class="metric-value" id="earnedMetric">--</span>
@@ -1562,7 +1579,7 @@
         <div class="vault-header">
           <div>
             <h2 class="vault-title">ArcVault USDC</h2>
-            <p class="vault-subtitle">yUSDC Â· Euler strategy</p>
+            <p class="vault-subtitle">yUSDC · Euler strategy</p>
           </div>
           <div class="vault-header-status">
             <span class="health-pill idle" id="healthPill">Idle</span>
@@ -1577,7 +1594,7 @@
 
         <div class="tab-shell">
           <section class="tab-panel active" id="depositPanel" data-tab-panel="deposit">
-            <div class="readonly-banner">Wallet not connected â€” read-only mode</div>
+            <div class="readonly-banner">Wallet not connected — read-only mode</div>
             <label for="depositAmount">Amount</label>
             <div class="amount-field">
               <input id="depositAmount" inputmode="decimal" value="250.00" aria-label="Deposit amount">
@@ -1585,10 +1602,11 @@
             </div>
             <div>
               <div class="data-row"><span>Wallet balance</span><strong id="depositWalletBalance">1,248.50 USDC</strong></div>
+              <a class="faucet-link" href="https://faucet.circle.com/" target="_blank" rel="noopener noreferrer">Get testnet USDC ↗</a>
               <div class="data-row"><span>Estimated yUSDC</span><strong id="estimatedShares">--</strong></div>
-              <div class="data-row"><span>Route</span><strong>USDC â†’ yUSDC</strong></div>
+              <div class="data-row"><span>Route</span><strong>USDC → yUSDC</strong></div>
               <div class="data-row">
-                <span class="tooltip-wrap">Rate <span class="tooltip-icon" tabindex="0">â„¹</span><span class="tooltip">Rate increases as vault earns yield. yUSDC is your receipt token.</span></span>
+                <span class="tooltip-wrap">Rate <span class="tooltip-icon" tabindex="0">ℹ</span><span class="tooltip">Rate increases as vault earns yield. yUSDC is your receipt token.</span></span>
                 <strong id="exchangeRate">1 yUSDC = 1.0032 USDC</strong>
               </div>
               <div class="data-row"><span>Explorer</span><strong>testnet.arcscan.app</strong></div>
@@ -1704,7 +1722,7 @@
   </main>
 
   <footer class="footer">
-    Built on Arc Testnet Â· USDC gas Â· Sub-second finality Â· <a href="https://arc.network" target="_blank" rel="noopener noreferrer">arc.network â†—</a>
+    Built on Arc Testnet · USDC gas · Sub-second finality · <a href="https://arc.network" target="_blank" rel="noopener noreferrer">arc.network ↗</a>
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -2392,7 +2410,7 @@
       row.className = 'tx-row is-new';
       row.innerHTML = `
         <span class="tx-kind">${kind}</span>
-        <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/${hash}" target="_blank" rel="noopener noreferrer">${truncateHash(hash)}<span class="external-icon">â†—</span></a> Â· ${detail}</span>
+        <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/${hash}" target="_blank" rel="noopener noreferrer">${truncateHash(hash)}<span class="external-icon">↗</span></a> · ${detail}</span>
         <span class="tx-amount">${amount}</span>
       `;
       timeline.prepend(row);
