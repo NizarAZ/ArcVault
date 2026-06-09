@@ -6,16 +6,11 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IEulerLendingStrategy} from "./ArcVault.sol";
 
-interface IMintableUSDC {
-    function mint(address to, uint256 amount) external;
-}
-
 contract MockEulerStrategy is IEulerLendingStrategy {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable USDC;
     uint256 public harvestCount;
-    uint256 public simulatedYield;
 
     constructor(IERC20 usdc_) {
         USDC = usdc_;
@@ -28,29 +23,15 @@ contract MockEulerStrategy is IEulerLendingStrategy {
     function withdraw(uint256 assets) external returns (uint256 withdrawn) {
         uint256 balance = USDC.balanceOf(address(this));
         withdrawn = assets > balance ? balance : assets;
-
-        if (withdrawn < assets) {
-            uint256 simulatedShortfall = assets - withdrawn;
-            simulatedYield = simulatedShortfall > simulatedYield ? 0 : simulatedYield - simulatedShortfall;
-        }
-
         USDC.safeTransfer(msg.sender, withdrawn);
     }
 
     function harvest() external returns (uint256 yieldAssets) {
         harvestCount += 1;
-        yieldAssets = totalAssets() / 1000;
-
-        if (yieldAssets > 0) {
-            (bool minted,) = address(USDC).call(abi.encodeCall(IMintableUSDC.mint, (address(this), yieldAssets)));
-
-            if (!minted) {
-                simulatedYield += yieldAssets;
-            }
-        }
+        yieldAssets = USDC.balanceOf(address(this)) / 1000;
     }
 
     function totalAssets() public view returns (uint256 assets) {
-        assets = USDC.balanceOf(address(this)) + simulatedYield;
+        assets = USDC.balanceOf(address(this));
     }
 }

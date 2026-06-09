@@ -17,13 +17,9 @@ Deposits are routed through an Euler lending strategy. Yield is compounded by a 
 \## Contracts (Arc Testnet — Chain 5042002)
 
 | Contract | Address |
-
-|----------|---------|
-
+| --- | --- |
 | ArcVault | `0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e` |
-
-| yUSDC    | `0x3e96A71FFdFb947239224568CfDFD445357ABD9D` |
-
+| yUSDC | `0x3e96A71FFdFb947239224568CfDFD445357ABD9D` |
 | MockEulerStrategy | `0x1Fdf6E91fdB0091017B4126f80431C41b94a66B3` |
 
 \## How to Test

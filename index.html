@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
     :root {
       --color-bg:           #04060d;
@@ -230,11 +231,35 @@
     }
 
     .btn-primary {
+      position: relative;
+      overflow: hidden;
       border: 1px solid rgba(79, 195, 247, 0);
       background: rgba(79, 195, 247, 0.06);
       color: var(--color-text);
       padding: 0 18px;
       font-weight: 600;
+    }
+
+    .btn-primary::after {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+      transform: translateX(-100%);
+      content: "";
+      pointer-events: none;
+    }
+
+    .btn-primary:hover::after {
+      animation: shimmer 600ms ease;
+    }
+
+    @keyframes shimmer {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(100%);
+      }
     }
 
     .btn-primary:hover,
@@ -503,10 +528,16 @@
       margin: 20px 0;
     }
 
+    .segmented button {
+      transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
     .segmented button.active {
       border-color: rgba(79, 195, 247, 0.62);
+      border-bottom-color: var(--color-primary);
       background: rgba(79, 195, 247, 0.08);
       color: var(--color-primary);
+      font-weight: 500;
     }
 
     .tab-shell {
@@ -570,8 +601,10 @@
       margin-top: 8px;
       padding: 0 14px;
       border: 1px solid var(--color-border);
+      border-left: 2px solid transparent;
       border-radius: var(--radius-md);
       background: rgba(4, 6, 13, 0.68);
+      transition: box-shadow 200ms ease, border-color 200ms ease;
     }
 
     .readonly-banner {
@@ -618,7 +651,21 @@
 
     .amount-field:focus-within {
       border-color: rgba(79, 195, 247, 0.38);
-      box-shadow: 0 0 0 1px rgba(79, 195, 247, 0.08);
+      box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.25);
+    }
+
+    .amount-field.has-value {
+      border-left-color: var(--color-primary);
+    }
+
+    .amount-field .btn-secondary {
+      flex: 0 0 auto;
+      min-width: 0;
+      min-height: 28px;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 11px;
     }
 
     .token-chip {
@@ -632,10 +679,21 @@
       display: flex;
       justify-content: space-between;
       gap: 12px;
-      padding: 11px 0;
+      padding: 11px 8px;
       border-bottom: 1px solid rgba(232, 234, 240, 0.05);
+      border-radius: 0;
       color: var(--color-text-muted);
       font-size: 13px;
+      transition: background 150ms ease;
+    }
+
+    .data-row:hover {
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .tab-panel > div:not(.amount-field):not(.form-actions):not(.withdraw-confirm) .data-row:last-child {
+      border-bottom: 0;
     }
 
     .data-row strong {
@@ -712,7 +770,7 @@
 
     .form-actions {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr;
       gap: 10px;
       margin-top: auto;
     }
@@ -1116,6 +1174,7 @@
       right: 24px;
       bottom: 24px;
       z-index: 8;
+      display: none;
       max-width: min(360px, calc(100vw - 32px));
       padding: 14px 16px;
       border: 1px solid rgba(79, 195, 247, 0.28);
@@ -1127,14 +1186,12 @@
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px);
-      transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
-        transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: none;
       backdrop-filter: blur(16px);
     }
 
     .toast.visible {
-      opacity: 1;
-      transform: translateY(0);
+      display: block;
     }
 
     .bot-stack {
@@ -1565,7 +1622,7 @@
           <div class="metric" data-stagger style="--stagger:4">
             <span class="metric-value" id="apyMetric">--</span>
             <span class="metric-label">Net APY</span>
-            <span class="metric-subtext">Sourced from <a href="https://euler.finance" target="_blank" rel="noopener noreferrer">Euler</a> · Arc Testnet · Updated 4h ago</span>
+            <span class="metric-subtext" id="apyContext">--</span>
           </div>
           <div class="metric" data-stagger style="--stagger:5">
             <span class="metric-value" id="earnedMetric">--</span>
@@ -1599,6 +1656,7 @@
             <div class="amount-field">
               <input id="depositAmount" inputmode="decimal" value="250.00" aria-label="Deposit amount">
               <span class="token-chip">USDC</span>
+              <button class="btn-secondary" id="depositMax" type="button">Max</button>
             </div>
             <div>
               <div class="data-row"><span>Wallet balance</span><strong id="depositWalletBalance">1,248.50 USDC</strong></div>
@@ -1613,8 +1671,8 @@
             </div>
             <div class="form-actions">
               <button class="btn-primary" id="depositAction" type="button">Deposit</button>
-              <button class="btn-secondary" id="depositMax" type="button">Max</button>
             </div>
+            <p id="depositApprovalHint" style="font-size:12px;color:var(--color-text-muted);margin-top:6px;" hidden>First deposit requires 2 wallet signatures: approve + deposit.</p>
           </section>
 
           <section class="tab-panel" id="withdrawPanel" data-tab-panel="withdraw">
@@ -1622,6 +1680,7 @@
             <div class="amount-field">
               <input id="withdrawAmount" inputmode="decimal" value="120.00" aria-label="Withdraw shares">
               <span class="token-chip">yUSDC</span>
+              <button class="btn-secondary" id="withdrawMax" type="button">MAX</button>
             </div>
             <div>
               <div class="data-row"><span>Your shares</span><strong id="userShares">--</strong></div>
@@ -1631,7 +1690,6 @@
             </div>
             <div class="form-actions">
               <button class="btn-primary" id="withdrawAction" type="button">Withdraw</button>
-              <button class="btn-secondary" id="withdrawMax" type="button">MAX</button>
             </div>
             <div class="withdraw-confirm" id="withdrawConfirm" aria-live="polite">
               <p class="confirm-title">Confirm withdrawal</p>
@@ -1767,7 +1825,9 @@
       'function totalSupply() view returns (uint256)',
       'function decimals() view returns (uint8)'
     ];
+    const STRATEGY_ABI = ['function totalAssets() view returns (uint256)'];
     const USDC_ABI = [
+      'function balanceOf(address account) view returns (uint256)',
       'function allowance(address owner, address spender) view returns (uint256)',
       'function approve(address spender, uint256 value) returns (bool)'
     ];
@@ -1783,6 +1843,8 @@
       walletUsdc: 0,
       vaultUsdc: 0,
       netApy: null,
+      apyIsProjected: false,
+      lastCompoundTimestamp: null,
       userShares: 0,
       withdrawableUsdc: 0,
       dayEarned: null,
@@ -1794,6 +1856,21 @@
       isKeeper: false,
       keeper: ''
     };
+
+    function loadDepositBasis(address) {
+      const key = `arcvault:basis:${address.toLowerCase()}`;
+      return parseFloat(localStorage.getItem(key) || '0');
+    }
+
+    function saveDepositBasis(address, usdcAmount) {
+      const key = `arcvault:basis:${address.toLowerCase()}`;
+      const current = loadDepositBasis(address);
+      localStorage.setItem(key, String(current + usdcAmount));
+    }
+
+    function clearDepositBasis(address) {
+      localStorage.removeItem(`arcvault:basis:${address.toLowerCase()}`);
+    }
 
     function sizeCanvas() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1881,6 +1958,33 @@
       }, { threshold: 0.12 });
 
       sections.forEach((section) => observer.observe(section));
+    }
+
+    function setupGsapAnimations() {
+      const runHeroEntrance = () => {
+        if (window.gsap && !reduceMotion.matches) {
+          window.gsap.from('.metric', { y: 24, opacity: 0, duration: 0.6, stagger: 0.1, ease: 'power3.out', delay: 0.2 });
+          window.gsap.from('.vault-card', { y: 32, opacity: 0, duration: 0.7, ease: 'power3.out', delay: 0.1 });
+          window.gsap.from('.mission h1', { y: 20, opacity: 0, duration: 0.8, ease: 'power3.out' });
+        }
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', runHeroEntrance, { once: true });
+      } else {
+        runHeroEntrance();
+      }
+
+      let wasConnected = document.body.classList.contains('wallet-connected');
+      const walletObserver = new MutationObserver(() => {
+        const isConnected = document.body.classList.contains('wallet-connected');
+        if (isConnected && !wasConnected && window.gsap && !reduceMotion.matches) {
+          window.gsap.from('.position-cell', { y: 20, opacity: 0, duration: 0.5, stagger: 0.08, ease: 'back.out(1.4)' });
+        }
+        wasConnected = isConnected;
+      });
+
+      walletObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
 
     function setupTabs() {
@@ -2001,7 +2105,9 @@
     function getReadContracts() {
       return {
         vault: new window.ethers.Contract(ARCVAULT_ADDRESS, ARCVAULT_ABI, READ_PROVIDER),
-        yusdc: new window.ethers.Contract(YUSDC_ADDRESS, YUSDC_ABI, READ_PROVIDER)
+        yusdc: new window.ethers.Contract(YUSDC_ADDRESS, YUSDC_ABI, READ_PROVIDER),
+        usdc: new window.ethers.Contract(ARC_USDC_ADDRESS, USDC_ABI, READ_PROVIDER),
+        strategy: new window.ethers.Contract(STRATEGY_ADDRESS, STRATEGY_ABI, READ_PROVIDER)
       };
     }
 
@@ -2022,26 +2128,28 @@
       if (!window.ethers) return;
 
       try {
-        const { vault, yusdc } = getReadContracts();
+        const { vault, yusdc, usdc, strategy } = getReadContracts();
         const reads = [vault.totalAssets(), yusdc.totalSupply(), vault.keeper()];
 
         if (appState.address) {
-          reads.push(READ_PROVIDER.getBalance(appState.address), yusdc.balanceOf(appState.address));
+          reads.push(
+            usdc.balanceOf(appState.address),
+            yusdc.balanceOf(appState.address),
+            usdc.allowance(appState.address, ARCVAULT_ADDRESS)
+          );
         }
 
-        const [totalAssets, totalSupply, keeperAddress, nativeBalance = 0n, sharesBalance = 0n] = await Promise.all(reads);
-        const STRATEGY_ABI = ['function totalAssets() view returns (uint256)'];
-        const strategyContract = new window.ethers.Contract(STRATEGY_ADDRESS, STRATEGY_ABI, READ_PROVIDER);
-        const strategyAssets = await strategyContract.totalAssets();
+        const [totalAssets, totalSupply, keeperAddress, usdcBalance = 0n, sharesBalance = 0n, allowance = 0n] = await Promise.all(reads);
+        const strategyAssets = await strategy.totalAssets();
         console.log('Strategy assets:', window.ethers.formatUnits(strategyAssets, 6), 'USDC');
 
         appState.vaultUsdc = Number(window.ethers.formatUnits(totalAssets, TOKEN_DECIMALS));
-        appState.walletUsdc = appState.address ? Number(window.ethers.formatEther(nativeBalance)) : appState.walletUsdc;
+        appState.walletUsdc = appState.address ? Number(window.ethers.formatUnits(usdcBalance, TOKEN_DECIMALS)) : appState.walletUsdc;
         appState.userShares = appState.address ? Number(window.ethers.formatUnits(sharesBalance, TOKEN_DECIMALS)) : appState.userShares;
         appState.withdrawableUsdc = appState.userShares > 0
           ? Number(window.ethers.formatUnits(await vault.convertToAssets(sharesBalance), TOKEN_DECIMALS))
           : 0;
-        appState.depositedUsdc = appState.withdrawableUsdc;
+        appState.depositedUsdc = appState.address ? loadDepositBasis(appState.address) : appState.depositedUsdc;
         appState.personalEarned = Math.max(0, appState.withdrawableUsdc - appState.depositedUsdc);
         appState.exchangeRate = totalSupply > 0n
           ? Number(window.ethers.formatUnits((totalAssets * 1000000n) / totalSupply, TOKEN_DECIMALS))
@@ -2053,10 +2161,93 @@
           appState.address.toLowerCase() === keeperAddress.toLowerCase()
         );
         appState.contractDeployed = true;
+        updateApprovalHint(appState.address && allowance === 0n);
         renderAppState();
       } catch (error) {
         console.error(error);
         showToast('Connected, but vault data could not be loaded.');
+      }
+    }
+
+    async function loadEventHistory() {
+      if (!window.ethers) return;
+
+      try {
+        const { vault, strategy } = getReadContracts();
+        const [depositEvents, withdrawEvents, compoundEvents] = await Promise.all([
+          vault.queryFilter(vault.filters.Deposited(), -2000),
+          vault.queryFilter(vault.filters.Withdrawn(), -2000),
+          vault.queryFilter(vault.filters.Compounded(), -2000)
+        ]);
+        const events = [...depositEvents, ...withdrawEvents, ...compoundEvents]
+          .sort((a, b) => {
+            const blockDelta = b.blockNumber - a.blockNumber;
+            if (blockDelta !== 0) return blockDelta;
+            return (b.index ?? b.logIndex ?? 0) - (a.index ?? a.logIndex ?? 0);
+          })
+          .slice(0, 20);
+
+        const latestCompound = compoundEvents
+          .slice()
+          .sort((a, b) => {
+            const blockDelta = b.blockNumber - a.blockNumber;
+            if (blockDelta !== 0) return blockDelta;
+            return (b.index ?? b.logIndex ?? 0) - (a.index ?? a.logIndex ?? 0);
+          })[0];
+
+        if (latestCompound) {
+          const yieldAssets = latestCompound.args.yieldAssets ?? latestCompound.args[1];
+          const totalAssetsAfter = latestCompound.args.totalAssetsAfter ?? latestCompound.args[2];
+          const yieldUsdc = Number(window.ethers.formatUnits(yieldAssets, TOKEN_DECIMALS));
+          const totalAfterUsdc = Number(window.ethers.formatUnits(totalAssetsAfter, TOKEN_DECIMALS));
+          const preCompoundUsdc = totalAfterUsdc - yieldUsdc;
+          const dailyRate = preCompoundUsdc > 0 ? yieldUsdc / preCompoundUsdc : 0;
+          const compoundBlock = await READ_PROVIDER.getBlock(latestCompound.blockNumber);
+
+          appState.netApy = ((1 + dailyRate) ** 365 - 1) * 100;
+          appState.apyIsProjected = false;
+          appState.lastCompoundTimestamp = compoundBlock ? compoundBlock.timestamp * 1000 : null;
+          renderAppState();
+        } else {
+          const strategyAssets = await strategy.totalAssets();
+          const strategyAssetsUsdc = Number(window.ethers.formatUnits(strategyAssets, TOKEN_DECIMALS));
+          const projectedYield = strategyAssetsUsdc * 0.001;
+          const projectedDailyRate = strategyAssetsUsdc > 0 ? projectedYield / strategyAssetsUsdc : 0;
+
+          appState.netApy = ((1 + projectedDailyRate) ** 365 - 1) * 100;
+          appState.apyIsProjected = true;
+          appState.lastCompoundTimestamp = null;
+          renderAppState();
+        }
+
+        if (!events.length) return;
+
+        const timeline = document.getElementById('timeline');
+        timeline.querySelector('.tx-empty')?.remove();
+
+        events.forEach((event) => {
+          if (event.fragment?.name === 'Deposited') {
+            const assets = event.args.assets ?? event.args[1];
+            const amount = Number(window.ethers.formatUnits(assets, TOKEN_DECIMALS));
+            addActivity('Deposit', `+${formatNumber(amount, 2)} USDC`, 'yUSDC minted', event.transactionHash, { isNew: false, placement: 'append' });
+            return;
+          }
+
+          if (event.fragment?.name === 'Withdrawn') {
+            const shares = event.args.shares ?? event.args[2];
+            const amount = Number(window.ethers.formatUnits(shares, TOKEN_DECIMALS));
+            addActivity('Withdraw', `-${formatNumber(amount, 2)} yUSDC`, 'yUSDC burned', event.transactionHash, { isNew: false, placement: 'append' });
+            return;
+          }
+
+          if (event.fragment?.name === 'Compounded') {
+            const yieldAssets = event.args.yieldAssets ?? event.args[1];
+            const amount = Number(window.ethers.formatUnits(yieldAssets, TOKEN_DECIMALS));
+            addActivity('Compound', `+${formatNumber(amount, 2)} USDC yield`, 'keeper executed', event.transactionHash, { isNew: false, placement: 'append' });
+          }
+        });
+      } catch (error) {
+        console.error(error);
       }
     }
 
@@ -2107,6 +2298,7 @@
       walletState.classList.toggle('connected', connected);
       connectButton.textContent = connected ? 'Connected' : 'Connect Wallet';
       setHealth(connected ? 'Withdraw Ready' : 'Idle');
+      if (!connected) updateApprovalHint(false);
       if (connected && !reduceMotion.matches) {
         positionPanel.classList.remove('panel-enter');
         void positionPanel.offsetWidth;
@@ -2116,12 +2308,20 @@
       renderAppState();
     }
 
+    function updateApprovalHint(isVisible) {
+      const hint = document.getElementById('depositApprovalHint');
+      if (hint) hint.hidden = !isVisible;
+    }
+
     function setHealth(nextHealth) {
       appState.health = nextHealth;
       const healthPill = document.getElementById('healthPill');
       const className = nextHealth.toLowerCase().replace(/\s+/g, '-');
       healthPill.className = `health-pill ${className}`;
       healthPill.textContent = nextHealth;
+      if (window.gsap && !reduceMotion.matches) {
+        window.gsap.from('#healthPill', { scale: 0.88, duration: 0.3, ease: 'back.out(2)' });
+      }
     }
 
     function setupVaultActions() {
@@ -2250,25 +2450,31 @@
     async function runDeposit(amount, button) {
       const parsedAmount = window.ethers.parseUnits(String(amount), TOKEN_DECIMALS);
       setHealth('Supplying');
-      setButtonBusy(button, 'Approving');
+      setButtonBusy(button, 'Checking allowance…');
 
       try {
         const { usdc, vault } = await getWriteContracts();
         const allowance = await usdc.allowance(appState.address, ARCVAULT_ADDRESS);
 
         if (allowance < parsedAmount) {
+          setButtonBusy(button, 'Step 1/2 — Approve USDC');
+          showToast('Approve USDC spending in your wallet. This is required once.');
           const approveTx = await usdc.approve(ARCVAULT_ADDRESS, parsedAmount);
-          showToast('Approval submitted. Waiting for confirmation.');
           await approveTx.wait();
+          setButtonBusy(button, 'Step 2/2 — Depositing');
+          showToast('Approval confirmed. Submitting deposit...');
+        } else {
+          setButtonBusy(button, 'Depositing');
         }
 
-        setButtonBusy(button, 'Depositing');
         const tx = await vault.deposit(parsedAmount);
         showToast('Deposit submitted. Waiting for Arc confirmation.');
         await tx.wait();
 
+        saveDepositBasis(appState.address, amount);
         addActivity('Deposit', `+${formatNumber(amount, 2)} USDC`, 'minted yUSDC', tx.hash);
         await refreshOnchainState();
+        updateApprovalHint(false);
         document.getElementById('depositAmount').value = Math.min(250, appState.walletUsdc).toFixed(2);
         setHealth('Withdraw Ready');
         showToast('Deposit confirmed. yUSDC minted.');
@@ -2287,10 +2493,22 @@
       setButtonBusy(button, 'Withdrawing');
 
       try {
-        const { vault } = await getWriteContracts();
+        const { vault, yusdc } = await getWriteContracts();
         const tx = await vault.withdraw(parsedShares);
         showToast('Withdrawal submitted. Waiting for Arc confirmation.');
         await tx.wait();
+        const remainingShares = await yusdc.balanceOf(appState.address);
+
+        if (remainingShares === 0n) {
+          clearDepositBasis(appState.address);
+        } else {
+          const remainingSharesNumber = Number(window.ethers.formatUnits(remainingShares, TOKEN_DECIMALS));
+          const shareFraction = shares / (shares + remainingSharesNumber);
+          const currentBasis = loadDepositBasis(appState.address);
+          const basisReduction = currentBasis * shareFraction;
+          clearDepositBasis(appState.address);
+          saveDepositBasis(appState.address, currentBasis - basisReduction);
+        }
 
         addActivity('Withdraw', `-${formatNumber(shares, 2)} yUSDC`, 'burned yUSDC', tx.hash);
         if (onConfirmed) onConfirmed();
@@ -2366,7 +2584,12 @@
       const estimatedWithdraw = withdrawShares * appState.exchangeRate;
       const earnedPct = appState.depositedUsdc > 0 && appState.dayEarned !== null ? (appState.dayEarned / appState.depositedUsdc) * 100 : 0;
       const vaultShare = appState.vaultUsdc > 0 ? (appState.depositedUsdc / appState.vaultUsdc) * 100 : 0;
+      const displayedApy = appState.netApy !== null ? Math.min(appState.netApy, 999.99) : null;
+      const lastCompoundHours = appState.lastCompoundTimestamp
+        ? Math.floor((Date.now() - appState.lastCompoundTimestamp) / 3600000)
+        : null;
 
+      syncAmountFieldStates();
       depositInput.disabled = !connected;
       withdrawInput.disabled = !connected;
       depositAction.textContent = connected ? 'Deposit' : 'Connect Wallet to Deposit';
@@ -2384,7 +2607,14 @@
       document.getElementById('withdrawableBalance').textContent = `${formatNumber(estimatedWithdraw || appState.withdrawableUsdc, 2)} USDC`;
       document.getElementById('strategyState').textContent = appState.strategy;
       document.getElementById('vaultMetric').textContent = `${formatNumber(appState.vaultUsdc, 2)}`;
-      document.getElementById('apyMetric').textContent = appState.contractDeployed && appState.netApy !== null ? `${formatNumber(appState.netApy, 2)}%` : '--';
+      document.getElementById('apyMetric').textContent = appState.contractDeployed && displayedApy !== null
+        ? `${appState.apyIsProjected ? '~' : ''}${formatNumber(displayedApy, 2)}%`
+        : '--';
+      document.getElementById('apyContext').textContent = appState.netApy === null
+        ? '--'
+        : appState.apyIsProjected
+          ? 'Projected from strategy yield · Euler · Arc Testnet'
+          : `Based on last compound · Euler · Arc Testnet · Updated ${lastCompoundHours ?? 0}h ago`;
       document.getElementById('earnedMetric').textContent = appState.dayEarned !== null ? `+${formatNumber(appState.dayEarned, 2)}` : '--';
       document.getElementById('earnedContext').textContent = appState.dayEarned !== null ? `≈ $${formatNumber(appState.dayEarned, 2)} · ${formatNumber(earnedPct, 4)}% of position` : '--';
       document.getElementById('exchangeRate').textContent = `1 yUSDC = ${formatNumber(appState.exchangeRate, 4)} USDC`;
@@ -2392,6 +2622,12 @@
       document.getElementById('myShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
       document.getElementById('myEarned').textContent = `+${formatNumber(appState.personalEarned, 2)} USDC`;
       document.getElementById('myVaultShare').textContent = `${formatNumber(vaultShare, 2)}%`;
+    }
+
+    function syncAmountFieldStates() {
+      document.querySelectorAll('.amount-field input').forEach((input) => {
+        input.closest('.amount-field')?.classList.toggle('has-value', readPositiveAmount(input.value) > 0);
+      });
     }
 
     function simulateTx(button, label, onComplete) {
@@ -2408,30 +2644,60 @@
       }, reduceMotion.matches ? 150 : 850);
     }
 
-    function addActivity(kind, amount, detail, txHash) {
+    function addActivity(kind, amount, detail, txHash, options = {}) {
       const timeline = document.getElementById('timeline');
       const hash = txHash || makeHash();
+      const isNew = options.isNew !== false;
       const row = document.createElement('div');
-      row.className = 'tx-row is-new';
+      row.className = `tx-row${isNew ? ' is-new' : ''}`;
       row.innerHTML = `
         <span class="tx-kind">${kind}</span>
         <span class="tx-hash"><a class="hash-link" href="https://testnet.arcscan.app/tx/${hash}" target="_blank" rel="noopener noreferrer">${truncateHash(hash)}<span class="external-icon">↗</span></a> · ${detail}</span>
         <span class="tx-amount">${amount}</span>
       `;
-      timeline.prepend(row);
+      if (options.placement === 'append') {
+        timeline.append(row);
+      } else {
+        timeline.prepend(row);
+      }
 
-      window.setTimeout(() => {
-        row.classList.remove('is-new');
-      }, reduceMotion.matches ? 150 : 900);
+      if (isNew) {
+        if (window.gsap && !reduceMotion.matches) {
+          row.style.animation = 'none';
+          window.gsap.from(row, { x: -16, opacity: 0, duration: 0.4, ease: 'power2.out' });
+        }
+
+        window.setTimeout(() => {
+          row.classList.remove('is-new');
+        }, reduceMotion.matches ? 150 : 900);
+      }
     }
 
     function showToast(message) {
       const toast = document.getElementById('toast');
       toast.textContent = message;
       toast.classList.add('visible');
+      if (window.gsap && !reduceMotion.matches) {
+        window.gsap.fromTo('#toast', { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' });
+      } else {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+      }
       clearTimeout(toastTimer);
       toastTimer = window.setTimeout(() => {
-        toast.classList.remove('visible');
+        if (window.gsap && !reduceMotion.matches) {
+          window.gsap.to('#toast', {
+            opacity: 0,
+            y: 8,
+            duration: 0.25,
+            ease: 'power2.in',
+            onComplete: () => toast.classList.remove('visible')
+          });
+        } else {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          toast.classList.remove('visible');
+        }
       }, 2400);
     }
 
@@ -2567,13 +2833,16 @@
     }
 
     setupReveal();
+    setupGsapAnimations();
     setupTabs();
     setupWallet();
     setupVaultActions();
     setupKeeperClock();
     setupCounters();
     renderAppState();
-    refreshOnchainState();
+    refreshOnchainState().then(() => {
+      loadEventHistory();
+    });
   </script>
 </body>
 </html>

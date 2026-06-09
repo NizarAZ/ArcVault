@@ -213,7 +213,7 @@ contract ArcVaultTest is Test {
         configure.validateVault(address(receiptToken));
     }
 
-    function testSourceMockHarvestDoesNotRevertWithNonMintableUsdc() public {
+    function testSourceMockHarvestReturnsYieldWithoutMinting() public {
         NonMintableUSDC nonMintableUsdc = new NonMintableUSDC(address(this), 100e6);
         SourceMockEulerStrategy sourceStrategy = new SourceMockEulerStrategy(IERC20(address(nonMintableUsdc)));
 
@@ -222,7 +222,7 @@ contract ArcVaultTest is Test {
         uint256 yieldAssets = sourceStrategy.harvest();
 
         assertEq(yieldAssets, 100_000);
-        assertEq(sourceStrategy.simulatedYield(), 100_000);
-        assertEq(sourceStrategy.totalAssets(), 100_100_000);
+        assertEq(nonMintableUsdc.balanceOf(address(sourceStrategy)), 100e6);
+        assertEq(sourceStrategy.totalAssets(), 100e6);
     }
 }
