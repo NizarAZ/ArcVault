@@ -91,14 +91,20 @@ contract ArcVault is Ownable, ReentrancyGuard {
         emit Withdrawn(msg.sender, assets, shares);
     }
 
+    /// @notice Compounds strategy yield and reports realized yield from vault state.
+    /// @dev The raw harvest return is intentionally not trusted for accounting; the vault
+    ///      uses before/after totalAssets so strategy implementation changes cannot misreport yield.
     function compound() external nonReentrant onlyKeeper returns (uint256 yieldAssets) {
         IEulerLendingStrategy strategy_ = strategy;
         if (address(strategy_) == address(0)) revert StrategyNotSet();
 
-        yieldAssets = strategy_.harvest();
-        _deployIdle();
-
+        uint256 beforeAssets = totalAssets();
+        uint256 harvested = strategy_.harvest();
+        harvested; // Explicitly consume the strategy return; state diff remains the source of truth.
         uint256 assetsAfter = totalAssets();
+        uint256 diff = assetsAfter > beforeAssets ? assetsAfter - beforeAssets : 0;
+        yieldAssets = diff;
+
         emit Compounded(msg.sender, yieldAssets, assetsAfter);
     }
 
