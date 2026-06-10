@@ -1,132 +1,198 @@
-ArcVault
-ArcVault is a non‑custodial USDC yield vault deployed on Arc Testnet. Users deposit Arc Testnet USDC, receive yUSDC receipt tokens, and can withdraw their proportional share at any time.
+# ArcVault
 
-Deposits are routed into a RealisticMockLendingStrategy, a deterministic, educational lending‑yield model that accrues time‑based APR on behalf of the vault. Yield is periodically realized by a keeper wallet calling the vault’s compound() function, which measures before/after totalAssets() to compute realized yield.
+ArcVault is a non-custodial USDC yield vault deployed on Arc Testnet. Users deposit USDC, receive yUSDC receipt tokens, and withdraw their proportional share of the vault.
 
-Live App
-https://arc-vault-kappa.vercel.app
+The project includes a single-file frontend, Solidity vault contracts, a deterministic mock lending strategy, and an automated keeper.
 
-Contracts
-Arc Testnet chain ID: 5042002
+## Live App
 
-Contract	Address
-ArcVault	0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e
-yUSDC (vault share token)	0x3e96A71FFdFb947239224568CfDFD445357ABD9D
-RealisticMockLendingStrategy (Euler‑style mock)	0x1Fdf6E91fdB0091017B4126f80431C41b94a66B3
-USDC (Arc Testnet gas + asset)	0x3600000000000000000000000000000000000000
-Note: The strategy is a testnet‑safe mock. It does not integrate a live lending protocol; instead, it uses configurable APR parameters and time‑based accrual, capped by prefunded USDC reserves held by the strategy contract so it never “mints” yield out of thin air.
+[arc-vault-kappa.vercel.app](https://arc-vault-kappa.vercel.app)
 
-Frontend
-The app is a single‑file vanilla frontend in index.html.
+## Network
 
-ethers.js v6 loaded from CDN
+| Setting | Value |
+| --- | --- |
+| Network | Arc Testnet |
+| Chain ID | `5042002` |
+| RPC | `https://rpc.testnet.arc.network` |
+| Native symbol | `USDC` |
 
-GSAP 3 animations loaded from CDN
+## Deployed Contracts
 
-No React, no bundler
+| Contract | Address |
+| --- | --- |
+| ArcVault | `0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e` |
+| yUSDC | `0x3e96A71FFdFb947239224568CfDFD445357ABD9D` |
+| Current MockEulerStrategy | `0x1Fdf6E91fdB0091017B4126f80431C41b94a66B3` |
+| Arc Testnet USDC | `0x3600000000000000000000000000000000000000` |
 
-Wallet USDC balance read from the USDC ERC‑20 balanceOf()
+The deployed ArcVault currently points to `MockEulerStrategy`.
 
-yUSDC position and withdrawable USDC derived from vault accounting and totalAssets()
+`RealisticMockLendingStrategy.sol` is implemented in the repository but is not yet deployed or assigned to the live vault. Its on-chain address will be added here after deployment.
 
-Local wallet deposit basis tracked in the browser to show personal “earned USDC”
+## Realistic Mock Strategy
 
-Timeline displays recent Deposited, Withdrawn, and Compounded events from ArcVault
+[`RealisticMockLendingStrategy.sol`](arcvault-contracts/src/RealisticMockLendingStrategy.sol) is a self-contained educational lending model for Arc Testnet. It does not connect to a real lending protocol.
 
-APY displays either:
+It provides:
 
-An estimate derived from realized compounding events, or
+- configurable base APR in basis points
+- optional utilization-based APR adjustment
+- deterministic time-based yield accrual
+- an APR safety cap
+- prefunded USDC reserves that back simulated yield
+- vault-only deposit, withdrawal, and harvest operations
+- additive views for effective APR, pending yield, and available reserves
 
-A projected APY before the first compound
+Yield is calculated from:
 
-Keeper Bot
-The standalone keeper bot lives in scripts/keeper.js. It runs one compound cycle and exits, making it suitable for cron or GitHub Actions.
+```text
+accountedAssets * effectiveAprBps * elapsedSeconds
+-------------------------------------------------
+            BPS * SECONDS_PER_YEAR
+```
 
-The bot:
+Realized yield cannot exceed USDC reserves already held by the strategy. This keeps `accountedAssets` backed by actual testnet USDC.
 
-Connects to Arc Testnet via ARC_RPC (default https://rpc.testnet.arc.network).
+## Vault Accounting
 
-Loads the keeper wallet from PRIVATE_KEY.
+ArcVault reports total managed assets as:
 
-Verifies the wallet matches vault.keeper().
+```text
+vault USDC balance + strategy.totalAssets()
+```
 
-Reads strategy and vault assets.
+During `compound()`:
 
-Skips if the strategy has no assets to avoid wasting gas.
+1. ArcVault reads `totalAssets()` before harvesting.
+2. It calls `strategy.harvest()`.
+3. It reads `totalAssets()` again.
+4. The positive before/after difference becomes `yieldAssets`.
+5. ArcVault emits `Compounded(keeper, yieldAssets, totalAssetsAfter)`.
 
-Calls vault.compound().
+The vault uses state-based accounting rather than trusting the strategy's raw harvest return.
 
-Waits for confirmation, parses the Compounded event, and logs the transaction hash, harvested yield, and new total assets.
+## Strategy Migration
+
+To activate `RealisticMockLendingStrategy`:
+
+1. Deploy it with Arc Testnet USDC, the ArcVault address, an owner, and APR parameters.
+2. Fund its yield reserve with testnet USDC.
+3. Ensure assets are not stranded in the old strategy.
+4. From the ArcVault owner wallet, call:
+
+```solidity
+setStrategy(newStrategyAddress)
+```
+
+5. Call `deployIdle()` if ArcVault holds undeployed USDC.
+6. Update the keeper script's `STRATEGY_ADDRESS`.
+7. Update the frontend strategy address and this README.
+
+The current ArcVault does not automatically withdraw all assets from the old strategy during `setStrategy()`. Migrate or withdraw old strategy assets before switching.
+
+## Frontend
+
+The frontend is contained in [`index.html`](index.html).
+
+- vanilla HTML, CSS, and JavaScript
+- ethers.js v6 loaded from CDN
+- GSAP 3 animations loaded from CDN
+- no React or bundler
+- ERC-20 USDC wallet balance using six decimals
+- yUSDC position and withdrawable asset display
+- address-specific local deposit cost basis
+- recent `Deposited`, `Withdrawn`, and `Compounded` event history
+- projected or compound-derived APY
+- visible two-step USDC approval and deposit flow
+
+## Keeper
+
+The one-shot keeper is in [`scripts/keeper.js`](scripts/keeper.js). It is designed for local execution, cron, and GitHub Actions.
+
+The keeper:
+
+1. Loads `PRIVATE_KEY` and `ARC_RPC`.
+2. Verifies its wallet matches `vault.keeper()`.
+3. Reads strategy and vault assets.
+4. Skips compounding when the strategy is empty.
+5. Calls `vault.compound()`.
+6. Parses the `Compounded` event.
+7. Logs the transaction hash, harvested yield, and new total assets.
 
 Local setup:
 
-bash
+```powershell
 cd scripts
 npm install
-Create scripts/.env:
+```
 
-text
+Create `scripts/.env`:
+
+```env
 PRIVATE_KEY=your_keeper_wallet_private_key
 ARC_RPC=https://rpc.testnet.arc.network
-Run locally:
+```
 
-bash
+Run:
+
+```powershell
 node --env-file=.env keeper.js
-Only use a dedicated keeper wallet. Do not commit .env.
+```
 
-GitHub Actions Keeper
-The scheduled keeper workflow is in .github/workflows/keeper.yml.
+Never commit `.env` or expose a private key.
 
-It runs:
+## Automated Compounding
 
-Daily at 18:00 UTC
+The workflow at [`.github/workflows/keeper.yml`](.github/workflows/keeper.yml) runs:
 
-Manually through workflow_dispatch
+- daily at `18:00 UTC`
+- manually through `workflow_dispatch`
 
-Required GitHub secret:
+Add this GitHub Actions repository secret:
 
-text
+```text
 KEEPER_PRIVATE_KEY
-This secret must be the private key for the wallet currently set as vault.keeper(). Once configured, compounding runs fully automated from GitHub’s infrastructure; your local device does not need to be online.
+```
 
-How to Test
-Add Arc Testnet to MetaMask:
+It must belong to the wallet currently returned by `ArcVault.keeper()`. Once configured, compounding runs from GitHub Actions and does not require a local machine to remain online.
 
-Network: Arc Testnet
+## Testing the App
 
-RPC: https://rpc.testnet.arc.network
+1. Add Arc Testnet to MetaMask.
+2. Get testnet USDC from [Circle Faucet](https://faucet.circle.com/).
+3. Open the live app.
+4. Connect your wallet.
+5. Approve USDC on the first deposit.
+6. Confirm the deposit transaction.
+7. Withdraw by entering the amount of yUSDC shares to burn.
 
-Chain ID: 5042002
+## Project Structure
 
-Symbol: USDC
+```text
+index.html
+scripts/
+  keeper.js
+arcvault-contracts/
+  src/
+    ArcVault.sol
+    yUSDC.sol
+    MockEulerStrategy.sol
+    RealisticMockLendingStrategy.sol
+  script/
+  test/
+.github/
+  workflows/
+    keeper.yml
+```
 
-Get testnet USDC from https://faucet.circle.com.
+## Stack
 
-Visit the app: https://arc-vault-kappa.vercel.app.
-
-Connect your wallet.
-
-Deposit USDC.
-
-Approve USDC spending on first deposit, then confirm the deposit transaction.
-
-After the keeper has compounded at least once, observe your “earned USDC” and the Compounded events.
-
-Withdraw by entering yUSDC shares in the Withdraw panel.
-
-Stack
-Solidity 0.8.24 + Foundry
-
-ethers.js v6
-
-GSAP 3
-
-Vanilla HTML, CSS, and JavaScript
-
-GitHub Actions (keeper automation)
-
-Vercel (frontend hosting)
-
-Arc Testnet (USDC as gas, sub‑second finality)
-
-
+- Solidity 0.8.24
+- Foundry
+- OpenZeppelin Contracts
+- ethers.js v6
+- GSAP 3
+- GitHub Actions
+- Vercel
+- Arc Testnet
