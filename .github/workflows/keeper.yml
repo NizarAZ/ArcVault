@@ -5,15 +5,35 @@ on:
     - cron: '0 18 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   compound:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
-      PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY }}
       ARC_RPC: https://rpc.testnet.arc.network
+      PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY || secrets.PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: cd scripts && npm install && node keeper.js
+
+      - name: Validate keeper secret
+        shell: bash
+        run: |
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo "::error title=Missing keeper secret::Add KEEPER_PRIVATE_KEY in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Install keeper dependencies
+        working-directory: scripts
+        run: npm ci
+
+      - name: Run keeper cycle
+        working-directory: scripts
+        run: node keeper.js
