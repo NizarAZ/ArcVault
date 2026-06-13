@@ -4,12 +4,12 @@ const ARC_RPC = process.env.ARC_RPC || 'https://rpc.testnet.arc.network';
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 const ARCVAULT_ADDRESS = '0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e';
-const STRATEGY_ADDRESS = '0x1Fdf6E91fdB0091017B4126f80431C41b94a66B3';
 const TOKEN_DECIMALS = 6;
 
 const ARCVAULT_ABI = [
   'function compound() returns (uint256)',
   'function keeper() view returns (address)',
+  'function strategy() view returns (address)',
   'function totalAssets() view returns (uint256)',
   'event Compounded(address indexed keeper, uint256 yieldAssets, uint256 totalAssetsAfter)'
 ];
@@ -34,7 +34,6 @@ async function main() {
   log(`Loaded keeper wallet: ${wallet.address}`);
 
   const vault = new Contract(ARCVAULT_ADDRESS, ARCVAULT_ABI, wallet);
-  const strategy = new Contract(STRATEGY_ADDRESS, STRATEGY_ABI, provider);
 
   log('Reading vault keeper address.');
   const keeper = await vault.keeper();
@@ -42,6 +41,10 @@ async function main() {
     throw new Error(`Wallet is not the vault keeper. Expected ${keeper}, got ${wallet.address}.`);
   }
   log('Keeper address verified.');
+
+  const strategyAddress = await vault.strategy();
+  log(`Active strategy: ${strategyAddress}`);
+  const strategy = new Contract(strategyAddress, STRATEGY_ABI, provider);
 
   log('Reading strategy assets.');
   const strategyAssets = await strategy.totalAssets();
@@ -54,6 +57,24 @@ async function main() {
   if (strategyAssets <= 0n) {
     log('Strategy has no assets. Skipping compound to avoid wasting gas.');
     return;
+  }
+
+  log('Simulating vault.compound() before broadcast.');
+  try {
+    const expectedYield = await vault.compound.staticCall();
+    log(`Compound simulation succeeded. Expected yield: ${formatUsdc(expectedYield)}`);
+  } catch (error) {
+    const reason = error?.shortMessage || error?.reason || error?.message || '';
+
+    if (reason.includes('caller is not a minter')) {
+      log(
+        `Compound skipped: active strategy ${strategyAddress} is the legacy minting mock. ` +
+        'Deploy and assign RealisticMockLendingStrategy before automated compounding.'
+      );
+      return;
+    }
+
+    throw error;
   }
 
   log('Submitting vault.compound().');
