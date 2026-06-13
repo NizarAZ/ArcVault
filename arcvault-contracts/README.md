@@ -9,6 +9,12 @@ Arc Testnet details:
 - Explorer: `https://testnet.arcscan.app`
 - USDC ERC-20 interface: `0x3600000000000000000000000000000000000000`
 
+Active deployment:
+
+- ArcVault: `0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c`
+- yUSDC: `0xF9a536cbb52a6AEC3b233883958bB4b6102156bA`
+- RealisticMockLendingStrategy: `0x6585CBCB1198c1DaDB1315D3437b8A0557818171`
+
 ## Setup
 
 Install Foundry dependencies:

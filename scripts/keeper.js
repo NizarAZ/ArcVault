@@ -3,7 +3,7 @@ import { Contract, Interface, JsonRpcProvider, Wallet, formatUnits } from 'ether
 const ARC_RPC = process.env.ARC_RPC || 'https://rpc.testnet.arc.network';
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
-const ARCVAULT_ADDRESS = '0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e';
+const ARCVAULT_ADDRESS = '0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c';
 const TOKEN_DECIMALS = 6;
 
 const ARCVAULT_ABI = [

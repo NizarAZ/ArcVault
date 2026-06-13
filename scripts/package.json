@@ -1,6 +1,8 @@
 {
   "type": "module",
   "dependencies": {
-    "ethers": "^6.0.0"
+    "@openzeppelin/contracts": "5.0.2",
+    "ethers": "^6.0.0",
+    "solc": "0.8.24"
   }
 }

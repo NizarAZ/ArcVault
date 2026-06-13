@@ -21,14 +21,14 @@ The project includes a single-file frontend, Solidity vault contracts, a determi
 
 | Contract | Address |
 | --- | --- |
-| ArcVault | `0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e` |
-| yUSDC | `0x3e96A71FFdFb947239224568CfDFD445357ABD9D` |
-| Current MockEulerStrategy | `0x1Fdf6E91fdB0091017B4126f80431C41b94a66B3` |
+| ArcVault | `0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c` |
+| yUSDC | `0xF9a536cbb52a6AEC3b233883958bB4b6102156bA` |
+| RealisticMockLendingStrategy | `0x6585CBCB1198c1DaDB1315D3437b8A0557818171` |
 | Arc Testnet USDC | `0x3600000000000000000000000000000000000000` |
 
-The deployed ArcVault currently points to `MockEulerStrategy`.
+The active ArcVault points to `RealisticMockLendingStrategy`. It was deployed with a separate keeper wallet, a prefunded yield reserve, and an initial testnet deposit.
 
-`RealisticMockLendingStrategy.sol` is implemented in the repository but is not yet deployed or assigned to the live vault. Its on-chain address will be added here after deployment.
+The previous vault at `0xb9FA72d5BBD6417F94E692D578546DB72Fb3042e` remains available for legacy yUSDC holders to withdraw from its original strategy.
 
 ## Realistic Mock Strategy
 
@@ -72,24 +72,11 @@ During `compound()`:
 
 The vault uses state-based accounting rather than trusting the strategy's raw harvest return.
 
-## Strategy Migration
+## Deployment
 
-To activate `RealisticMockLendingStrategy`:
+The active stack was deployed with [`scripts/deploy-replacement-vault.js`](scripts/deploy-replacement-vault.js). The script deploys yUSDC and ArcVault, links the existing realistic strategy, funds its yield reserve, and seeds an initial deposit.
 
-1. Deploy it with Arc Testnet USDC, the ArcVault address, an owner, and APR parameters.
-2. Fund its yield reserve with testnet USDC.
-3. Ensure assets are not stranded in the old strategy.
-4. From the ArcVault owner wallet, call:
-
-```solidity
-setStrategy(newStrategyAddress)
-```
-
-5. Call `deployIdle()` if ArcVault holds undeployed USDC.
-6. Update the keeper script's `STRATEGY_ADDRESS`.
-7. Update the frontend strategy address and this README.
-
-The current ArcVault does not automatically withdraw all assets from the old strategy during `setStrategy()`. Migrate or withdraw old strategy assets before switching.
+The previous vault could not safely switch strategies because its legacy strategy only allowed the vault to withdraw and the deployed vault had no administrative migration function. A fresh vault avoids hiding or stranding legacy holder assets.
 
 ## Frontend
 
@@ -117,8 +104,9 @@ The keeper:
 3. Reads strategy and vault assets.
 4. Skips compounding when the strategy is empty.
 5. Calls `vault.compound()`.
-6. Parses the `Compounded` event.
-7. Logs the transaction hash, harvested yield, and new total assets.
+6. Simulates `compound()` before broadcasting.
+7. Parses the `Compounded` event.
+8. Logs the transaction hash, harvested yield, and new total assets.
 
 Local setup:
 
