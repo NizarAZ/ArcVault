@@ -16,11 +16,11 @@ jobs:
       ARC_RPC: https://rpc.testnet.arc.network
       PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY || secrets.PRIVATE_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Validate keeper secret
         shell: bash
@@ -32,7 +32,7 @@ jobs:
 
       - name: Install keeper dependencies
         working-directory: scripts
-        run: npm ci
+        run: npm ci --omit=dev
 
       - name: Run keeper cycle
         working-directory: scripts
