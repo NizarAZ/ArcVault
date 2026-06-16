@@ -1761,12 +1761,14 @@
         <div class="bot-stack">
           <div class="bot-card" data-stagger style="--stagger:1">
             <span>Last rebalance</span>
-            <strong>Active</strong>
+            <div class="compound-lines" id="lastRebalance">
+              <strong>Loading</strong>
+            </div>
           </div>
           <div class="bot-card" data-stagger style="--stagger:2">
             <span>Next compound</span>
             <div class="compound-lines" id="nextCompound">
-              <strong>Active</strong>
+              <strong>Loading</strong>
             </div>
           </div>
           <div class="bot-card" data-stagger style="--stagger:3">
@@ -1808,6 +1810,7 @@
     const ARC_USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
     const STRATEGY_ADDRESS = '0x6585CBCB1198c1DaDB1315D3437b8A0557818171';
     const TOKEN_DECIMALS = 6;
+    const KEEPER_RUN_HOUR_UTC = 18;
     const ARCVAULT_ABI = [
       'function deposit(uint256 amount) returns (uint256 shares)',
       'function withdraw(uint256 shares) returns (uint256 assets)',
@@ -1825,7 +1828,12 @@
       'function totalSupply() view returns (uint256)',
       'function decimals() view returns (uint8)'
     ];
-    const STRATEGY_ABI = ['function totalAssets() view returns (uint256)'];
+    const STRATEGY_ABI = [
+      'function totalAssets() view returns (uint256)',
+      'function lastUpdated() view returns (uint256)',
+      'function harvestCount() view returns (uint256)',
+      'function pendingYield() view returns (uint256)'
+    ];
     const USDC_ABI = [
       'function balanceOf(address account) view returns (uint256)',
       'function allowance(address owner, address spender) view returns (uint256)',
@@ -1845,6 +1853,9 @@
       netApy: null,
       apyIsProjected: false,
       lastCompoundTimestamp: null,
+      lastStrategyUpdateTimestamp: null,
+      strategyHarvestCount: 0,
+      pendingYieldUsdc: null,
       userShares: 0,
       withdrawableUsdc: 0,
       dayEarned: null,
@@ -2140,7 +2151,12 @@
         }
 
         const [totalAssets, totalSupply, keeperAddress, usdcBalance = 0n, sharesBalance = 0n, allowance = 0n] = await Promise.all(reads);
-        const strategyAssets = await strategy.totalAssets();
+        const [strategyAssets, strategyLastUpdated, strategyHarvestCount, pendingYield] = await Promise.all([
+          strategy.totalAssets(),
+          strategy.lastUpdated().catch(() => 0n),
+          strategy.harvestCount().catch(() => 0n),
+          strategy.pendingYield().catch(() => null)
+        ]);
         console.log('Strategy assets:', window.ethers.formatUnits(strategyAssets, 6), 'USDC');
 
         appState.vaultUsdc = Number(window.ethers.formatUnits(totalAssets, TOKEN_DECIMALS));
@@ -2154,6 +2170,9 @@
         appState.exchangeRate = totalSupply > 0n
           ? Number(window.ethers.formatUnits((totalAssets * 1000000n) / totalSupply, TOKEN_DECIMALS))
           : 1;
+        appState.lastStrategyUpdateTimestamp = strategyLastUpdated > 0n ? Number(strategyLastUpdated) * 1000 : appState.lastStrategyUpdateTimestamp;
+        appState.strategyHarvestCount = Number(strategyHarvestCount);
+        appState.pendingYieldUsdc = pendingYield === null ? appState.pendingYieldUsdc : Number(window.ethers.formatUnits(pendingYield, TOKEN_DECIMALS));
         appState.keeper = keeperAddress;
         appState.isKeeper = Boolean(
           appState.address &&
@@ -2167,6 +2186,26 @@
         console.error(error);
         showToast('Connected, but vault data could not be loaded.');
       }
+    }
+
+    async function queryLatestEventInRange(contract, filter, blockSpan = 250000, chunkSize = 9500) {
+      const latestBlock = await READ_PROVIDER.getBlockNumber();
+      const oldestBlock = Math.max(0, latestBlock - blockSpan);
+
+      for (let endBlock = latestBlock; endBlock >= oldestBlock; endBlock -= chunkSize) {
+        const startBlock = Math.max(oldestBlock, endBlock - chunkSize + 1);
+        const events = await contract.queryFilter(filter, startBlock, endBlock);
+
+        if (events.length) {
+          return events.sort((a, b) => {
+            const blockDelta = b.blockNumber - a.blockNumber;
+            if (blockDelta !== 0) return blockDelta;
+            return (b.index ?? b.logIndex ?? 0) - (a.index ?? a.logIndex ?? 0);
+          })[0];
+        }
+      }
+
+      return null;
     }
 
     async function loadEventHistory() {
@@ -2187,13 +2226,17 @@
           })
           .slice(0, 20);
 
-        const latestCompound = compoundEvents
+        let latestCompound = compoundEvents
           .slice()
           .sort((a, b) => {
             const blockDelta = b.blockNumber - a.blockNumber;
             if (blockDelta !== 0) return blockDelta;
             return (b.index ?? b.logIndex ?? 0) - (a.index ?? a.logIndex ?? 0);
           })[0];
+
+        if (!latestCompound) {
+          latestCompound = await queryLatestEventInRange(vault, vault.filters.Compounded());
+        }
 
         if (latestCompound) {
           const yieldAssets = latestCompound.args.yieldAssets ?? latestCompound.args[1];
@@ -2207,6 +2250,7 @@
           appState.netApy = ((1 + dailyRate) ** 365 - 1) * 100;
           appState.apyIsProjected = false;
           appState.lastCompoundTimestamp = compoundBlock ? compoundBlock.timestamp * 1000 : null;
+          appState.lastStrategyUpdateTimestamp = appState.lastCompoundTimestamp || appState.lastStrategyUpdateTimestamp;
           renderAppState();
         } else {
           const strategyAssets = await strategy.totalAssets();
@@ -2536,6 +2580,7 @@
         await tx.wait();
 
         addActivity('Compound', 'Yield reinvested', 'keeper executed', tx.hash);
+        appState.lastCompoundTimestamp = Date.now();
         await refreshOnchainState();
         setHealth('Withdraw Ready');
         showToast('Compound confirmed.');
@@ -2622,6 +2667,7 @@
       document.getElementById('myShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
       document.getElementById('myEarned').textContent = `+${formatNumber(appState.personalEarned, 2)} USDC`;
       document.getElementById('myVaultShare').textContent = `${formatNumber(vaultShare, 2)}%`;
+      renderKeeperTracker();
     }
 
     function syncAmountFieldStates() {
@@ -2736,39 +2782,74 @@
       return hash;
     }
 
-    function setupKeeperClock() {
-      const updateClock = () => {
-        const now = new Date();
-        const nextRun = new Date(Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
-          18,
-          0,
-          0
-        ));
-        const nextCompound = document.getElementById('nextCompound');
+    function getNextKeeperRunTimestamp(nowMs = Date.now()) {
+      const now = new Date(nowMs);
+      const nextRun = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        KEEPER_RUN_HOUR_UTC,
+        0,
+        0
+      ));
 
-        if (now.getTime() >= nextRun.getTime()) {
-          nextRun.setUTCDate(nextRun.getUTCDate() + 1);
-          const remaining = Math.max(0, nextRun.getTime() - now.getTime());
-          const hours = Math.floor(remaining / 3600000);
-          const minutes = Math.floor((remaining % 3600000) / 60000);
-          const seconds = Math.floor((remaining % 60000) / 1000);
-          nextCompound.innerHTML = `
-            <strong>Next run in ${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s</strong>
-            <small>Triggers when yield &gt; 0.5 USDC</small>
-          `;
-          return;
-        }
+      if (nowMs >= nextRun.getTime()) {
+        nextRun.setUTCDate(nextRun.getUTCDate() + 1);
+      }
 
-        nextCompound.innerHTML = `
-          <strong>Active</strong>
+      return nextRun.getTime();
+    }
+
+    function formatCountdown(ms) {
+      const remaining = Math.max(0, ms);
+      const hours = Math.floor(remaining / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+    }
+
+    function formatAge(timestamp) {
+      const elapsed = Math.max(0, Date.now() - timestamp);
+      const minutes = Math.floor(elapsed / 60000);
+      const hours = Math.floor(elapsed / 3600000);
+      const days = Math.floor(elapsed / 86400000);
+
+      if (minutes < 1) return 'just now';
+      if (hours < 1) return `${minutes}m ago`;
+      if (days < 1) return `${hours}h ago`;
+      return `${days}d ago`;
+    }
+
+    function renderKeeperTracker() {
+      const lastRebalance = document.getElementById('lastRebalance');
+      const nextCompound = document.getElementById('nextCompound');
+      if (!lastRebalance || !nextCompound) return;
+
+      const lastTimestamp = appState.lastCompoundTimestamp || appState.lastStrategyUpdateTimestamp;
+      const hasCompoundHistory = Boolean(appState.lastCompoundTimestamp) || appState.strategyHarvestCount > 0;
+      const pendingYieldText = appState.pendingYieldUsdc === null
+        ? 'Checking strategy yield'
+        : `Pending yield ${formatNumber(appState.pendingYieldUsdc, 6)} USDC`;
+
+      lastRebalance.innerHTML = hasCompoundHistory && lastTimestamp
+        ? `
+          <strong>${formatAge(lastTimestamp)}</strong>
+          <small>${appState.lastCompoundTimestamp ? 'Last keeper compound' : 'Last strategy update'}</small>
+        `
+        : `
+          <strong>No compounds yet</strong>
+          <small>Keeper runs daily at ${String(KEEPER_RUN_HOUR_UTC).padStart(2, '0')}:00 UTC</small>
         `;
-      };
 
-      updateClock();
-      window.setInterval(updateClock, 1000);
+      nextCompound.innerHTML = `
+        <strong>Next run in ${formatCountdown(getNextKeeperRunTimestamp() - Date.now())}</strong>
+        <small>${pendingYieldText}</small>
+      `;
+    }
+
+    function setupKeeperClock() {
+      renderKeeperTracker();
+      window.setInterval(renderKeeperTracker, 1000);
     }
 
     function setupCounters() {
