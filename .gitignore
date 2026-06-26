@@ -2,3 +2,7 @@
 **/.env
 node_modules/
 **/node_modules/
+arcvault-contracts/cache/
+arcvault-contracts/out/
+arcvault-contracts/lib/
+localhost-*.log

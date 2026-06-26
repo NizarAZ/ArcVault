@@ -58,7 +58,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -775,6 +776,260 @@
       margin-top: auto;
     }
 
+    .swap-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 30px;
+      padding: 24px;
+    }
+
+    .swap-copy {
+      display: grid;
+      align-content: start;
+      gap: 16px;
+    }
+
+    .swap-copy h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 52px);
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .swap-copy p {
+      max-width: 58ch;
+      margin: 14px 0 0;
+      color: var(--color-text-muted);
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 1.55;
+    }
+
+    .swap-reference {
+      display: grid;
+      max-width: 680px;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(12, 18, 32, 0.46);
+    }
+
+    .swap-reference-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .swap-reference-row,
+    .swap-pool-row,
+    .swap-flow-row {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .swap-reference-row span,
+    .swap-pool-row span,
+    .swap-flow-row span {
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .swap-reference-row strong,
+    .swap-pool-row strong,
+    .swap-flow-row strong {
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .swap-pools {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .swap-pool-row,
+    .swap-flow-row {
+      grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+      align-items: baseline;
+    }
+
+    .swap-pool-row strong,
+    .swap-flow-row strong {
+      text-align: right;
+    }
+
+    .swap-flow {
+      display: grid;
+      gap: 10px;
+    }
+
+    .swap-coming-soon {
+      display: grid;
+      max-width: 680px;
+      gap: 6px;
+      padding: 12px 14px;
+      border: 1px dashed rgba(79, 195, 247, 0.28);
+      border-radius: var(--radius-md);
+      background: rgba(79, 195, 247, 0.045);
+    }
+
+    .swap-coming-soon span {
+      width: max-content;
+      color: var(--color-primary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .swap-coming-soon strong {
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .swap-coming-soon p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .swap-tool {
+      display: flex;
+      flex-direction: column;
+      min-height: 310px;
+      gap: 14px;
+    }
+
+    .token-picker {
+      position: relative;
+      flex: 0 0 auto;
+      min-width: 126px;
+    }
+
+    .token-picker-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      height: 36px;
+      min-width: 0;
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      outline: 0;
+      background: var(--color-surface-2);
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .token-picker-trigger:hover,
+    .token-picker-trigger:focus-visible,
+    .token-picker.open .token-picker-trigger {
+      border-color: rgba(79, 195, 247, 0.38);
+      box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.18);
+    }
+
+    .token-picker-icon {
+      color: var(--color-text-muted);
+      font-size: 12px;
+      transition: transform 180ms ease;
+    }
+
+    .token-picker.open .token-picker-icon {
+      transform: rotate(180deg);
+    }
+
+    .token-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      z-index: 6;
+      display: grid;
+      width: 176px;
+      padding: 6px;
+      border: 1px solid rgba(79, 195, 247, 0.28);
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 20, 0.98);
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px) scale(0.98);
+      transform-origin: top right;
+    }
+
+    .token-picker.open .token-menu {
+      pointer-events: auto;
+    }
+
+    .token-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      min-height: 38px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .token-option:hover,
+    .token-option:focus-visible {
+      outline: none;
+      background: rgba(79, 195, 247, 0.08);
+      color: var(--color-text);
+    }
+
+    .token-option[aria-selected="true"] {
+      background: rgba(79, 195, 247, 0.14);
+      color: var(--color-primary);
+    }
+
+    .token-option small {
+      color: var(--color-text-faint);
+      font-family: var(--font-display);
+      font-size: 11px;
+    }
+
+    .swap-status {
+      min-height: 36px;
+      padding: 9px 10px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(4, 6, 13, 0.44);
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .activity {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 390px;
@@ -1176,7 +1431,7 @@
       z-index: 8;
       display: none;
       max-width: min(360px, calc(100vw - 32px));
-      padding: 14px 16px;
+      padding: 14px 16px 14px 42px;
       border: 1px solid rgba(79, 195, 247, 0.28);
       border-radius: var(--radius-md);
       background: rgba(8, 12, 20, 0.92);
@@ -1188,6 +1443,46 @@
       transform: translateY(10px);
       transition: none;
       backdrop-filter: blur(16px);
+    }
+
+    .toast::before {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      display: inline-grid;
+      width: 18px;
+      height: 18px;
+      place-items: center;
+      border: 1px solid rgba(79, 195, 247, 0.3);
+      border-radius: 50%;
+      color: var(--color-primary);
+      content: "i";
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+      transform: translateY(-50%);
+    }
+
+    .toast.success {
+      border-color: rgba(64, 211, 146, 0.42);
+    }
+
+    .toast.success::before {
+      border-color: rgba(64, 211, 146, 0.5);
+      color: #40d392;
+      content: "✓";
+    }
+
+    .toast.error {
+      border-color: rgba(255, 91, 91, 0.54);
+      color: #ffdede;
+    }
+
+    .toast.error::before {
+      border-color: rgba(255, 91, 91, 0.62);
+      color: #ff5b5b;
+      content: "!";
     }
 
     .toast.visible {
@@ -1299,6 +1594,7 @@
       }
 
       .hero,
+      .swap-panel,
       .activity {
         grid-template-columns: 1fr;
       }
@@ -1462,6 +1758,7 @@
       }
 
       .hero,
+      .swap-panel,
       .activity {
         grid-template-columns: 1fr;
       }
@@ -1499,6 +1796,32 @@
       .position-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
+      }
+
+      .swap-panel {
+        padding: 16px;
+      }
+
+      .swap-copy {
+        min-height: 0;
+      }
+
+      .swap-reference-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .swap-pool-row,
+      .swap-flow-row {
+        grid-template-columns: 1fr;
+      }
+
+      .swap-pool-row strong,
+      .swap-flow-row strong {
+        text-align: left;
+      }
+
+      .token-picker {
+        min-width: 104px;
       }
 
       .position-panel,
@@ -1707,6 +2030,98 @@
       </aside>
     </section>
 
+    <section class="swap-panel panel reveal" id="swapPanel">
+      <div class="swap-copy">
+        <div>
+          <h2 data-stagger style="--stagger:0">ArcVault Swap</h2>
+          <p data-stagger style="--stagger:1">Swap existing Arc Testnet assets into USDC, then deposit directly into ArcVault.</p>
+        </div>
+        <div class="swap-reference" aria-label="ArcSwap current details" data-stagger style="--stagger:2">
+          <div class="swap-reference-grid">
+            <div class="swap-reference-row">
+              <span>Pairs</span>
+              <strong>EURC to USDC · cirBTC to USDC</strong>
+            </div>
+            <div class="swap-reference-row">
+              <span>Fee</span>
+              <strong>0.30% ArcSwap pool fee</strong>
+            </div>
+            <div class="swap-reference-row">
+              <span>Protection</span>
+              <strong>Swap reverts below 99% of quote</strong>
+            </div>
+            <div class="swap-reference-row">
+              <span>Contract</span>
+              <strong>0xfaF3...9Af4</strong>
+            </div>
+          </div>
+          <div class="swap-pools" aria-label="ArcSwap pool reserves">
+            <div class="swap-pool-row">
+              <span>EURC pool</span>
+              <strong id="swapEurcReferenceReserve">--</strong>
+            </div>
+            <div class="swap-pool-row">
+              <span>cirBTC pool</span>
+              <strong id="swapCirbtcReferenceReserve">--</strong>
+            </div>
+          </div>
+          <div class="swap-flow">
+            <div class="swap-flow-row">
+              <span>Destination</span>
+              <strong>Arc USDC</strong>
+            </div>
+            <div class="swap-flow-row">
+              <span>Vault route</span>
+              <strong>USDC to yUSDC</strong>
+            </div>
+          </div>
+        </div>
+        <div class="swap-coming-soon" data-stagger style="--stagger:3">
+          <span>Coming soon</span>
+          <strong>Uniswap routing</strong>
+          <p>Future routing will sit beside ArcSwap. Today, swaps execute through the owner-seeded ArcSwap pools above.</p>
+        </div>
+      </div>
+
+      <div class="swap-tool">
+        <label for="swapAmount">From amount</label>
+        <div class="amount-field">
+          <input id="swapAmount" inputmode="decimal" value="" placeholder="0.00" aria-label="Swap amount">
+          <input id="swapToken" type="hidden" value="eurc">
+          <div class="token-picker" id="swapTokenPicker">
+            <button class="token-picker-trigger" id="swapTokenButton" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="swapTokenMenu">
+              <span id="swapTokenLabel">EURC</span>
+              <span class="token-picker-icon" aria-hidden="true">⌄</span>
+            </button>
+            <div class="token-menu" id="swapTokenMenu" role="listbox" aria-label="Swap token" aria-activedescendant="swapTokenOptionEurc">
+              <button class="token-option" id="swapTokenOptionEurc" type="button" role="option" data-value="eurc" aria-selected="true">
+                <span>EURC</span>
+                <small>Arc</small>
+              </button>
+              <button class="token-option" id="swapTokenOptionCirbtc" type="button" role="option" data-value="cirbtc" aria-selected="false">
+                <span>cirBTC</span>
+                <small>Arc</small>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="data-row"><span>Receive</span><strong id="swapReceive">USDC</strong></div>
+          <div class="data-row"><span>Balance</span><strong id="swapBalance">--</strong></div>
+          <div class="data-row"><span>Estimated output</span><strong id="swapEstimate">--</strong></div>
+          <div class="data-row"><span>Min received</span><strong id="swapMinReceived">--</strong></div>
+          <div class="data-row"><span>Pool reserves</span><strong id="swapPoolReserves">--</strong></div>
+          <div class="data-row"><span>Route</span><strong id="swapRoute">ArcSwap to USDC</strong></div>
+          <div class="data-row"><span>After swap</span><strong>Deposit USDC</strong></div>
+        </div>
+        <div class="swap-status" id="swapStatus">Connect a wallet to quote ArcSwap pools. Uniswap routing coming soon.</div>
+        <div class="form-actions">
+          <button class="btn-primary" id="swapAction" type="button">Swap to USDC</button>
+          <button class="btn-secondary" id="useUsdcForDeposit" type="button">Use USDC balance in deposit</button>
+        </div>
+      </div>
+    </section>
+
     <section class="position-panel panel" id="positionPanel">
       <div class="position-header">
         <h2>Personal Position</h2>
@@ -1808,9 +2223,28 @@
     const ARCVAULT_ADDRESS = '0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c';
     const YUSDC_ADDRESS = '0xF9a536cbb52a6AEC3b233883958bB4b6102156bA';
     const ARC_USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
+    const ARC_EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+    const ARC_CIRBTC_ADDRESS = '0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF';
+    const ARCSWAP_ADDRESS = '0xfaF3D6B6600B3D14E781cf0d0408c56E4FE49Af4';
     const STRATEGY_ADDRESS = '0x6585CBCB1198c1DaDB1315D3437b8A0557818171';
     const TOKEN_DECIMALS = 6;
     const KEEPER_RUN_HOUR_UTC = 18;
+    const SWAP_SLIPPAGE_BPS = 100;
+    const SWAP_DEADLINE_SECONDS = 600;
+    const SWAP_TOKENS = {
+      eurc: {
+        name: 'EURC',
+        symbol: 'EURC',
+        address: ARC_EURC_ADDRESS,
+        decimals: 6
+      },
+      cirbtc: {
+        name: 'cirBTC',
+        symbol: 'cirBTC',
+        address: ARC_CIRBTC_ADDRESS,
+        decimals: 8
+      }
+    };
     const ARCVAULT_ABI = [
       'function deposit(uint256 amount) returns (uint256 shares)',
       'function withdraw(uint256 shares) returns (uint256 assets)',
@@ -1837,13 +2271,24 @@
     const USDC_ABI = [
       'function balanceOf(address account) view returns (uint256)',
       'function allowance(address owner, address spender) view returns (uint256)',
+      'function decimals() view returns (uint8)',
       'function approve(address spender, uint256 value) returns (bool)'
+    ];
+    const ERC20_ABI = USDC_ABI;
+    const ARCSWAP_ABI = [
+      'function getAmountOut(address tokenIn, uint256 amountIn) view returns (uint256 usdcOut)',
+      'function getReserves(address token) view returns (uint256 tokenReserve, uint256 usdcReserve)',
+      'function tokenDecimals(address token) view returns (uint8)',
+      'function swapExactTokensForUSDC(address tokenIn, uint256 amountIn, uint256 minUsdcOut, address to, uint256 deadline) returns (uint256 usdcOut)',
+      'event Swapped(address indexed user, address indexed tokenIn, uint256 amountIn, uint256 usdcOut, address indexed to)'
     ];
     const READ_PROVIDER = new window.ethers.JsonRpcProvider(ARC_TESTNET.rpcUrls[0]);
     let stars = [];
     let frameId = 0;
     let connected = false;
     let toastTimer = 0;
+    let swapQuoteTimer = 0;
+    let swapQuoteRequest = 0;
 
     const appState = {
       contractDeployed: true,
@@ -1865,7 +2310,22 @@
       strategy: 'Lending',
       health: 'Idle',
       isKeeper: false,
-      keeper: ''
+      keeper: '',
+      swapToken: 'eurc',
+      swapBalance: 0,
+      swapAllowanceRaw: 0n,
+      swapAmountRaw: 0n,
+      swapQuoteRaw: 0n,
+      swapMinOutRaw: 0n,
+      swapEstimateUsdc: 0,
+      swapMinUsdc: 0,
+      swapTokenReserve: 0,
+      swapUsdcReserve: 0,
+      swapEurcReferenceReserve: '--',
+      swapCirbtcReferenceReserve: '--',
+      swapNeedsApproval: false,
+      swapLoading: false,
+      swapError: ''
     };
 
     function loadDepositBasis(address) {
@@ -2118,7 +2578,8 @@
         vault: new window.ethers.Contract(ARCVAULT_ADDRESS, ARCVAULT_ABI, READ_PROVIDER),
         yusdc: new window.ethers.Contract(YUSDC_ADDRESS, YUSDC_ABI, READ_PROVIDER),
         usdc: new window.ethers.Contract(ARC_USDC_ADDRESS, USDC_ABI, READ_PROVIDER),
-        strategy: new window.ethers.Contract(STRATEGY_ADDRESS, STRATEGY_ABI, READ_PROVIDER)
+        strategy: new window.ethers.Contract(STRATEGY_ADDRESS, STRATEGY_ABI, READ_PROVIDER),
+        arcSwap: isArcSwapConfigured() ? new window.ethers.Contract(ARCSWAP_ADDRESS, ARCSWAP_ABI, READ_PROVIDER) : null
       };
     }
 
@@ -2131,7 +2592,8 @@
         signer,
         vault: new window.ethers.Contract(ARCVAULT_ADDRESS, ARCVAULT_ABI, signer),
         yusdc: new window.ethers.Contract(YUSDC_ADDRESS, YUSDC_ABI, signer),
-        usdc: new window.ethers.Contract(ARC_USDC_ADDRESS, USDC_ABI, signer)
+        usdc: new window.ethers.Contract(ARC_USDC_ADDRESS, USDC_ABI, signer),
+        arcSwap: isArcSwapConfigured() ? new window.ethers.Contract(ARCSWAP_ADDRESS, ARCSWAP_ABI, signer) : null
       };
     }
 
@@ -2182,6 +2644,7 @@
         appState.contractDeployed = true;
         updateApprovalHint(appState.address && allowance === 0n);
         renderAppState();
+        queueSwapStateRefresh();
       } catch (error) {
         console.error(error);
         showToast('Connected, but vault data could not be loaded.');
@@ -2350,11 +2813,427 @@
       }
       showToast(connected ? 'Wallet connected on Arc Testnet.' : 'Wallet disconnected.');
       renderAppState();
+      queueSwapStateRefresh();
     }
 
     function updateApprovalHint(isVisible) {
       const hint = document.getElementById('depositApprovalHint');
       if (hint) hint.hidden = !isVisible;
+    }
+
+    function setupSwapActions() {
+      const swapAmount = document.getElementById('swapAmount');
+      const swapToken = document.getElementById('swapToken');
+      const swapTokenButton = document.getElementById('swapTokenButton');
+      const swapTokenPicker = document.getElementById('swapTokenPicker');
+      const swapTokenMenu = document.getElementById('swapTokenMenu');
+      const swapTokenOptions = document.querySelectorAll('.token-option');
+      const swapAction = document.getElementById('swapAction');
+      const useUsdcForDeposit = document.getElementById('useUsdcForDeposit');
+      const depositInput = document.getElementById('depositAmount');
+
+      swapAmount.addEventListener('input', () => {
+        renderSwapState();
+        queueSwapStateRefresh();
+      });
+      swapTokenButton.addEventListener('click', () => {
+        setTokenMenuOpen(!swapTokenPicker.classList.contains('open'));
+      });
+
+      swapTokenOptions.forEach((option) => {
+        option.addEventListener('click', () => {
+          setSwapToken(option.dataset.value);
+          setTokenMenuOpen(false);
+          renderSwapState();
+          queueSwapStateRefresh();
+        });
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!swapTokenPicker.contains(event.target)) {
+          setTokenMenuOpen(false);
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          setTokenMenuOpen(false);
+        }
+      });
+
+      swapAction.addEventListener('click', async () => {
+        await runSwap(swapAction);
+      });
+
+      useUsdcForDeposit.addEventListener('click', async () => {
+        if (connected) {
+          await refreshOnchainState();
+        }
+
+        const requestedAmount = readPositiveAmount(swapAmount.value);
+        const amount = connected && appState.walletUsdc > 0
+          ? Math.min(requestedAmount || appState.walletUsdc, appState.walletUsdc)
+          : requestedAmount;
+
+        if (!amount) {
+          showToast(connected ? 'No USDC balance available yet.' : 'Enter an amount or connect wallet first.');
+          return;
+        }
+
+        depositInput.value = trimTokenAmount(String(amount), 6);
+        document.querySelector('[data-tab-trigger="deposit"]')?.click();
+        document.querySelector('.vault-card')?.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'center' });
+        renderAppState();
+        showToast('Deposit amount updated.');
+      });
+
+      function setTokenMenuOpen(isOpen) {
+        swapTokenPicker.classList.toggle('open', isOpen);
+        swapTokenButton.setAttribute('aria-expanded', String(isOpen));
+
+        if (window.gsap && !reduceMotion.matches) {
+          window.gsap.killTweensOf(swapTokenMenu);
+          window.gsap.to(swapTokenMenu, {
+            autoAlpha: isOpen ? 1 : 0,
+            y: isOpen ? 0 : -6,
+            scale: isOpen ? 1 : 0.98,
+            duration: isOpen ? 0.22 : 0.16,
+            ease: isOpen ? 'power3.out' : 'power2.in',
+            pointerEvents: isOpen ? 'auto' : 'none'
+          });
+        } else {
+          swapTokenMenu.style.opacity = isOpen ? '1' : '0';
+          swapTokenMenu.style.transform = isOpen ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.98)';
+          swapTokenMenu.style.pointerEvents = isOpen ? 'auto' : 'none';
+        }
+      }
+
+      function setSwapToken(value) {
+        const selectedOption = [...swapTokenOptions].find((option) => option.dataset.value === value) || swapTokenOptions[0];
+        const label = selectedOption.querySelector('span')?.textContent || 'Choose token';
+
+        swapToken.value = selectedOption.dataset.value;
+        appState.swapToken = selectedOption.dataset.value;
+        document.getElementById('swapTokenLabel').textContent = label;
+        swapTokenMenu.setAttribute('aria-activedescendant', selectedOption.id);
+        swapTokenOptions.forEach((option) => {
+          option.setAttribute('aria-selected', String(option === selectedOption));
+        });
+      }
+
+      renderSwapState();
+      queueSwapStateRefresh();
+    }
+
+    function renderSwapState() {
+      const swapAmount = document.getElementById('swapAmount');
+      const swapToken = document.getElementById('swapToken');
+      const swapBalance = document.getElementById('swapBalance');
+      const swapEstimate = document.getElementById('swapEstimate');
+      const swapMinReceived = document.getElementById('swapMinReceived');
+      const swapPoolReserves = document.getElementById('swapPoolReserves');
+      const swapRoute = document.getElementById('swapRoute');
+      const swapStatus = document.getElementById('swapStatus');
+      const swapAction = document.getElementById('swapAction');
+      const swapEurcReferenceReserve = document.getElementById('swapEurcReferenceReserve');
+      const swapCirbtcReferenceReserve = document.getElementById('swapCirbtcReferenceReserve');
+      if (!swapAmount || !swapToken || !swapBalance || !swapEstimate || !swapMinReceived || !swapPoolReserves || !swapRoute || !swapStatus || !swapAction) return;
+
+      const amount = readPositiveAmount(swapAmount.value);
+      const selectedToken = getSwapTokenConfig(swapToken.value);
+      const hasConfiguredSwap = isArcSwapConfigured();
+      const hasQuote = appState.swapQuoteRaw > 0n;
+      const exceedsBalance = connected && amount > appState.swapBalance;
+
+      swapBalance.textContent = connected
+        ? `${formatNumber(appState.swapBalance, selectedToken.decimals === 8 ? 6 : 2)} ${selectedToken.symbol}`
+        : '--';
+      if (swapEurcReferenceReserve) swapEurcReferenceReserve.textContent = appState.swapEurcReferenceReserve;
+      if (swapCirbtcReferenceReserve) swapCirbtcReferenceReserve.textContent = appState.swapCirbtcReferenceReserve;
+
+      swapEstimate.textContent = hasQuote ? `${formatNumber(appState.swapEstimateUsdc, 2)} USDC` : '--';
+      swapMinReceived.textContent = hasQuote ? `${formatNumber(appState.swapMinUsdc, 2)} USDC` : '--';
+      swapPoolReserves.textContent = appState.swapTokenReserve > 0 || appState.swapUsdcReserve > 0
+        ? `${formatNumber(appState.swapTokenReserve, selectedToken.decimals === 8 ? 4 : 2)} ${selectedToken.symbol} / ${formatNumber(appState.swapUsdcReserve, 2)} USDC`
+        : '--';
+      swapRoute.textContent = `${selectedToken.symbol} to USDC via ArcSwap`;
+
+      if (!hasConfiguredSwap) {
+        swapStatus.textContent = 'ArcSwap contract address is not configured yet. Uniswap routing coming soon.';
+        swapAction.disabled = true;
+        swapAction.textContent = 'ArcSwap pending';
+        return;
+      }
+
+      if (!connected) {
+        swapStatus.textContent = 'Connect wallet to read balance and quote this pool.';
+        swapAction.disabled = false;
+        swapAction.textContent = 'Connect Wallet';
+        return;
+      }
+
+      if (!amount) {
+        swapStatus.textContent = 'Enter an amount to quote the owner-seeded ArcSwap pool.';
+        swapAction.disabled = true;
+        swapAction.textContent = 'Enter amount';
+        return;
+      }
+
+      if (appState.swapLoading) {
+        swapStatus.textContent = 'Checking pool quote and allowance...';
+        swapAction.disabled = true;
+        swapAction.textContent = 'Checking quote';
+        return;
+      }
+
+      if (appState.swapError) {
+        swapStatus.textContent = appState.swapError;
+        swapAction.disabled = true;
+        swapAction.textContent = 'Quote unavailable';
+        return;
+      }
+
+      if (exceedsBalance) {
+        swapStatus.textContent = `Insufficient ${selectedToken.symbol} balance.`;
+        swapAction.disabled = true;
+        swapAction.textContent = `Insufficient ${selectedToken.symbol}`;
+        return;
+      }
+
+      if (!hasQuote) {
+        swapStatus.textContent = 'No quote available for this amount.';
+        swapAction.disabled = true;
+        swapAction.textContent = 'Quote unavailable';
+        return;
+      }
+
+      swapStatus.textContent = appState.swapNeedsApproval
+        ? `Approve ${selectedToken.symbol} before swapping. Uniswap routing coming soon.`
+        : `Ready to swap with 1% slippage protection. Uniswap routing coming soon.`;
+      swapAction.disabled = false;
+      swapAction.textContent = appState.swapNeedsApproval ? `Approve ${selectedToken.symbol}` : 'Swap to USDC';
+    }
+
+    function isArcSwapConfigured() {
+      return Boolean(
+        window.ethers &&
+        ARCSWAP_ADDRESS &&
+        window.ethers.isAddress(ARCSWAP_ADDRESS) &&
+        ARCSWAP_ADDRESS !== window.ethers.ZeroAddress
+      );
+    }
+
+    function getSwapTokenConfig(value) {
+      return SWAP_TOKENS[value] || SWAP_TOKENS.eurc;
+    }
+
+    function parseSwapAmount(amount, decimals) {
+      if (!amount) return 0n;
+
+      try {
+        return window.ethers.parseUnits(trimTokenAmount(String(amount), decimals), decimals);
+      } catch (error) {
+        return 0n;
+      }
+    }
+
+    function queueSwapStateRefresh() {
+      window.clearTimeout(swapQuoteTimer);
+      swapQuoteTimer = window.setTimeout(refreshSwapState, 220);
+    }
+
+    async function refreshSwapState() {
+      if (!window.ethers) return;
+
+      const swapAmount = document.getElementById('swapAmount');
+      const swapToken = document.getElementById('swapToken');
+      if (!swapAmount || !swapToken) return;
+
+      const requestId = ++swapQuoteRequest;
+      const tokenKey = swapToken.value || appState.swapToken;
+      const token = getSwapTokenConfig(tokenKey);
+      const amount = readPositiveAmount(swapAmount.value);
+
+      appState.swapToken = tokenKey;
+      appState.swapLoading = isArcSwapConfigured();
+      appState.swapError = '';
+      renderSwapState();
+
+      try {
+        if (!isArcSwapConfigured()) {
+          appState.swapBalance = 0;
+          appState.swapAmountRaw = 0n;
+          appState.swapQuoteRaw = 0n;
+          appState.swapMinOutRaw = 0n;
+          appState.swapEstimateUsdc = 0;
+          appState.swapMinUsdc = 0;
+          appState.swapTokenReserve = 0;
+          appState.swapUsdcReserve = 0;
+          appState.swapEurcReferenceReserve = '--';
+          appState.swapCirbtcReferenceReserve = '--';
+          appState.swapNeedsApproval = false;
+          return;
+        }
+
+        const { arcSwap } = getReadContracts();
+        const referenceReserveReads = await Promise.all([
+          arcSwap.getReserves(SWAP_TOKENS.eurc.address).catch(() => null),
+          arcSwap.getReserves(SWAP_TOKENS.cirbtc.address).catch(() => null)
+        ]);
+        const [eurcReferenceReserves, cirbtcReferenceReserves] = referenceReserveReads;
+
+        if (eurcReferenceReserves) {
+          appState.swapEurcReferenceReserve = `${formatNumber(Number(window.ethers.formatUnits(eurcReferenceReserves[0], SWAP_TOKENS.eurc.decimals)), 2)} EURC / ${formatNumber(Number(window.ethers.formatUnits(eurcReferenceReserves[1], TOKEN_DECIMALS)), 2)} USDC`;
+        }
+
+        if (cirbtcReferenceReserves) {
+          appState.swapCirbtcReferenceReserve = `${formatNumber(Number(window.ethers.formatUnits(cirbtcReferenceReserves[0], SWAP_TOKENS.cirbtc.decimals)), 6)} cirBTC / ${formatNumber(Number(window.ethers.formatUnits(cirbtcReferenceReserves[1], TOKEN_DECIMALS)), 2)} USDC`;
+        }
+
+        const tokenContract = new window.ethers.Contract(token.address, ERC20_ABI, READ_PROVIDER);
+        const decimals = Number(await arcSwap.tokenDecimals(token.address).catch(() => tokenContract.decimals()));
+        token.decimals = decimals;
+        const amountRaw = parseSwapAmount(amount, decimals);
+        const reads = [
+          arcSwap.getReserves(token.address),
+          amountRaw > 0n ? arcSwap.getAmountOut(token.address, amountRaw) : Promise.resolve(0n)
+        ];
+
+        if (appState.address) {
+          reads.push(
+            tokenContract.balanceOf(appState.address),
+            tokenContract.allowance(appState.address, ARCSWAP_ADDRESS)
+          );
+        }
+
+        const [reserves, quoteRaw, balanceRaw = 0n, allowanceRaw = 0n] = await Promise.all(reads);
+        if (requestId !== swapQuoteRequest) return;
+
+        const [tokenReserveRaw, usdcReserveRaw] = reserves;
+        const minOutRaw = quoteRaw > 0n ? (quoteRaw * BigInt(10000 - SWAP_SLIPPAGE_BPS)) / 10000n : 0n;
+
+        appState.swapAmountRaw = amountRaw;
+        appState.swapQuoteRaw = quoteRaw;
+        appState.swapMinOutRaw = minOutRaw;
+        appState.swapAllowanceRaw = allowanceRaw;
+        appState.swapBalance = Number(window.ethers.formatUnits(balanceRaw, decimals));
+        appState.swapEstimateUsdc = Number(window.ethers.formatUnits(quoteRaw, TOKEN_DECIMALS));
+        appState.swapMinUsdc = Number(window.ethers.formatUnits(minOutRaw, TOKEN_DECIMALS));
+        appState.swapTokenReserve = Number(window.ethers.formatUnits(tokenReserveRaw, decimals));
+        appState.swapUsdcReserve = Number(window.ethers.formatUnits(usdcReserveRaw, TOKEN_DECIMALS));
+        appState.swapNeedsApproval = appState.address && amountRaw > 0n && allowanceRaw < amountRaw;
+      } catch (error) {
+        if (requestId !== swapQuoteRequest) return;
+        console.error(error);
+        appState.swapError = 'Quote unavailable. Check ArcSwap liquidity or try again.';
+        appState.swapQuoteRaw = 0n;
+        appState.swapMinOutRaw = 0n;
+        appState.swapNeedsApproval = false;
+      } finally {
+        if (requestId === swapQuoteRequest) {
+          appState.swapLoading = false;
+          renderSwapState();
+        }
+      }
+    }
+
+    async function runSwap(button) {
+      const swapAmount = document.getElementById('swapAmount');
+      const swapToken = document.getElementById('swapToken');
+      const selectedToken = getSwapTokenConfig(swapToken.value);
+      const amount = readPositiveAmount(swapAmount.value);
+
+      if (!connected) {
+        connectWallet();
+        return;
+      }
+
+      if (!isArcSwapConfigured()) {
+        showToast('ArcSwap is not deployed in the frontend yet.');
+        return;
+      }
+
+      if (!amount) {
+        showToast('Enter an amount to swap.');
+        return;
+      }
+
+      try {
+        await refreshSwapState();
+        if (!appState.swapAmountRaw || !appState.swapQuoteRaw) {
+          showToast('No swap quote available.');
+          return;
+        }
+
+        const { signer, arcSwap } = await getWriteContracts();
+        const tokenContract = new window.ethers.Contract(selectedToken.address, ERC20_ABI, signer);
+
+        if (appState.swapAllowanceRaw < appState.swapAmountRaw) {
+          setButtonBusy(button, `Approve ${selectedToken.symbol}`);
+          showToast(`Approve ${selectedToken.symbol} spending in your wallet.`);
+
+          if (appState.swapAllowanceRaw > 0n) {
+            const resetTx = await tokenContract.approve(ARCSWAP_ADDRESS, 0n);
+            await resetTx.wait();
+          }
+
+          const approveTx = await tokenContract.approve(ARCSWAP_ADDRESS, appState.swapAmountRaw);
+          await approveTx.wait();
+          const confirmedAllowance = await waitForSwapAllowance(tokenContract, appState.address, appState.swapAmountRaw);
+
+          if (confirmedAllowance < appState.swapAmountRaw) {
+            appState.swapError = `Approval confirmed, but ${selectedToken.symbol} allowance has not updated yet. Try again in a few seconds.`;
+            appState.swapNeedsApproval = true;
+            renderSwapState();
+            showToast(appState.swapError, 'error');
+            return;
+          }
+
+          appState.swapAllowanceRaw = confirmedAllowance;
+          appState.swapNeedsApproval = false;
+          renderSwapState();
+          showToast('Approval confirmed. Click Swap to USDC to continue.', 'success');
+          return;
+        }
+
+        setButtonBusy(button, 'Swap to USDC');
+        const deadline = Math.floor(Date.now() / 1000) + SWAP_DEADLINE_SECONDS;
+        const tx = await arcSwap.swapExactTokensForUSDC(
+          selectedToken.address,
+          appState.swapAmountRaw,
+          appState.swapMinOutRaw,
+          appState.address,
+          deadline
+        );
+        showToast('Swap submitted. Waiting for Arc confirmation.');
+        await tx.wait();
+
+        addActivity(
+          'Swap',
+          `+${formatNumber(appState.swapEstimateUsdc, 2)} USDC`,
+          `${selectedToken.symbol} to USDC`,
+          tx.hash
+        );
+        await refreshOnchainState();
+        await refreshSwapState();
+        showToast('Swap confirmed. USDC is ready to deposit.', 'success');
+      } catch (error) {
+        console.error(error);
+        handleTxError(error, 'Swap failed.');
+      } finally {
+        clearButtonBusy(button, appState.swapNeedsApproval ? `Approve ${selectedToken.symbol}` : 'Swap to USDC');
+      }
+    }
+
+    async function waitForSwapAllowance(tokenContract, owner, requiredAmount) {
+      let allowance = await tokenContract.allowance(owner, ARCSWAP_ADDRESS);
+
+      for (let attempt = 0; allowance < requiredAmount && attempt < 8; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+        allowance = await tokenContract.allowance(owner, ARCSWAP_ADDRESS);
+      }
+
+      return allowance;
     }
 
     function setHealth(nextHealth) {
@@ -2521,7 +3400,7 @@
         updateApprovalHint(false);
         document.getElementById('depositAmount').value = Math.min(250, appState.walletUsdc).toFixed(2);
         setHealth('Withdraw Ready');
-        showToast('Deposit confirmed. yUSDC minted.');
+        showToast('Deposit confirmed. yUSDC minted.', 'success');
       } catch (error) {
         console.error(error);
         setHealth('Withdraw Ready');
@@ -2558,7 +3437,7 @@
         if (onConfirmed) onConfirmed();
         await refreshOnchainState();
         document.getElementById('withdrawAmount').value = Math.min(120, appState.userShares).toFixed(2);
-        showToast('Withdraw confirmed. USDC returned.');
+        showToast('Withdraw confirmed. USDC returned.', 'success');
       } catch (error) {
         console.error(error);
         handleTxError(error, 'Withdraw failed.');
@@ -2583,7 +3462,7 @@
         appState.lastCompoundTimestamp = Date.now();
         await refreshOnchainState();
         setHealth('Withdraw Ready');
-        showToast('Compound confirmed.');
+        showToast('Compound confirmed.', 'success');
       } catch (error) {
         console.error(error);
         setHealth('Withdraw Ready');
@@ -2607,12 +3486,12 @@
 
     function handleTxError(error, fallback) {
       if (error?.code === 4001 || String(error?.message || '').toLowerCase().includes('rejected')) {
-        showToast('Transaction rejected.');
+        showToast('Transaction rejected.', 'error');
         return;
       }
 
       const reason = error?.shortMessage || error?.reason || error?.message || '';
-      showToast(reason ? `${fallback} ${reason}` : fallback);
+      showToast(reason ? `${fallback} ${reason}` : fallback, 'error');
     }
 
     function renderAppState() {
@@ -2667,6 +3546,7 @@
       document.getElementById('myShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
       document.getElementById('myEarned').textContent = `+${formatNumber(appState.personalEarned, 2)} USDC`;
       document.getElementById('myVaultShare').textContent = `${formatNumber(vaultShare, 2)}%`;
+      renderSwapState();
       renderKeeperTracker();
     }
 
@@ -2719,9 +3599,13 @@
       }
     }
 
-    function showToast(message) {
+    function showToast(message, variant = 'info') {
       const toast = document.getElementById('toast');
       toast.textContent = message;
+      toast.classList.remove('success', 'error');
+      if (variant === 'success' || variant === 'error') {
+        toast.classList.add(variant);
+      }
       toast.classList.add('visible');
       if (window.gsap && !reduceMotion.matches) {
         window.gsap.fromTo('#toast', { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' });
@@ -2917,6 +3801,7 @@
     setupGsapAnimations();
     setupTabs();
     setupWallet();
+    setupSwapActions();
     setupVaultActions();
     setupKeeperClock();
     setupCounters();

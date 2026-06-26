@@ -87,3 +87,12 @@ export function compileArcVaultStack() {
     { source: 'src/yUSDC.sol', contract: 'yUSDC' }
   ]);
 }
+
+export function compileArcSwap() {
+  return compile('ArcSwap.sol', [
+    {
+      source: 'src/ArcSwap.sol',
+      contract: 'ArcSwap'
+    }
+  ]).ArcSwap;
+}

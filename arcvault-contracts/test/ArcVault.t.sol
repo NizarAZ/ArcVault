@@ -61,7 +61,7 @@ contract MockEulerStrategy is IEulerLendingStrategy {
     }
 
     function totalAssets() external view returns (uint256 assets) {
-        assets = usdc.balanceOf(address(this));
+        assets = accountedAssets;
     }
 
     function addYield(uint256 amount) external {
@@ -135,6 +135,8 @@ contract ArcVaultTest is Test {
         vault.deposit(100e6);
 
         strategy.addYield(10e6);
+        vm.prank(keeper);
+        vault.compound();
 
         assertEq(vault.totalAssets(), 110e6);
         assertEq(vault.convertToAssets(100e6), 110e6);
