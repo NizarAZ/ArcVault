@@ -52,6 +52,9 @@ const ARC_CIRBTC_ADDRESS = '0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF';
 const TOKEN_DECIMALS = 6;
 const KEEPER_RUN_HOUR_UTC = 18;
 const SWAP_SLIPPAGE_BPS = 100;
+const SWAP_QUOTE_RETRY_DELAYS_MS = [300, 800];
+const SWAP_QUOTE_BACKGROUND_RETRY_MS = 1600;
+const SWAP_QUOTE_BACKGROUND_RETRY_LIMIT = 3;
 const APP_KIT_CHAIN = 'Arc_Testnet';
 const CIRCLE_KIT_KEY = import.meta.env.VITE_CIRCLE_KIT_KEY || '';
 const SWAP_TOKENS = {
@@ -65,12 +68,14 @@ const SWAP_TOKENS = {
   cirbtc: {
     name: 'cirBTC',
     symbol: 'cirBTC',
-    appKitSymbol: 'cirBTC',
+    appKitSymbol: ARC_CIRBTC_ADDRESS,
     address: ARC_CIRBTC_ADDRESS,
     decimals: 8
   }
 };
 const circleAppKit = new AppKit();
+const swapQuoteCache = new Map();
+const swapQuoteRetryCounts = new Map();
 const ARCVAULT_ABI = [
   'function deposit(uint256 amount) returns (uint256 shares)',
   'function withdraw(uint256 shares) returns (uint256 assets)',
@@ -108,6 +113,7 @@ let frameId = 0;
 let connected = false;
 let toastTimer = 0;
 let swapQuoteTimer = 0;
+let swapQuoteRetryTimer = 0;
 let swapQuoteRequest = 0;
 
 const appState = {
@@ -136,6 +142,7 @@ const appState = {
   swapAmountRaw: 0n,
   swapQuoteRaw: 0n,
   swapMinOutRaw: 0n,
+  swapQuoteKey: '',
   swapEstimateUsdc: 0,
   swapMinUsdc: 0,
   swapLoading: false,
@@ -771,8 +778,11 @@ function renderSwapState() {
   if (!swapAmount || !swapToken || !swapBalance || !swapEstimate || !swapMinReceived || !swapRoute || !swapStatus || !swapAction) return;
 
   const amount = readPositiveAmount(swapAmount.value);
+  const tokenKey = swapToken.value || appState.swapToken;
   const selectedToken = getSwapTokenConfig(swapToken.value);
-  const hasQuote = appState.swapQuoteRaw > 0n;
+  const amountRaw = parseSwapAmount(amount, selectedToken.decimals);
+  const quoteKey = getSwapQuoteKey(tokenKey, amountRaw);
+  const hasQuote = appState.swapQuoteRaw > 0n && appState.swapQuoteKey === quoteKey;
   const exceedsBalance = connected && amount > appState.swapBalance;
   const hasKitKey = hasCircleKitKey();
 
@@ -846,6 +856,56 @@ function getSwapTokenConfig(value) {
   return SWAP_TOKENS[value] || SWAP_TOKENS.eurc;
 }
 
+function getSwapQuoteKey(tokenKey, amountRaw) {
+  return `${tokenKey}:${amountRaw.toString()}`;
+}
+
+function clearSwapQuote() {
+  appState.swapQuoteRaw = 0n;
+  appState.swapMinOutRaw = 0n;
+  appState.swapQuoteKey = '';
+  appState.swapEstimateUsdc = 0;
+  appState.swapMinUsdc = 0;
+}
+
+function applySwapQuote(quoteKey, quoteRaw, minOutRaw) {
+  appState.swapQuoteRaw = quoteRaw;
+  appState.swapMinOutRaw = minOutRaw;
+  appState.swapQuoteKey = quoteKey;
+  appState.swapEstimateUsdc = Number(window.ethers.formatUnits(quoteRaw, TOKEN_DECIMALS));
+  appState.swapMinUsdc = Number(window.ethers.formatUnits(minOutRaw, TOKEN_DECIMALS));
+}
+
+function restoreCachedSwapQuote(quoteKey) {
+  const cached = swapQuoteCache.get(quoteKey);
+  if (!cached) return false;
+
+  applySwapQuote(quoteKey, cached.quoteRaw, cached.minOutRaw);
+  return true;
+}
+
+function scheduleSwapQuoteRetry(quoteKey) {
+  const retryCount = swapQuoteRetryCounts.get(quoteKey) || 0;
+  if (retryCount >= SWAP_QUOTE_BACKGROUND_RETRY_LIMIT) return;
+
+  swapQuoteRetryCounts.set(quoteKey, retryCount + 1);
+  window.clearTimeout(swapQuoteRetryTimer);
+  swapQuoteRetryTimer = window.setTimeout(() => {
+    const swapAmount = document.getElementById('swapAmount');
+    const swapToken = document.getElementById('swapToken');
+    if (!swapAmount || !swapToken) return;
+
+    const tokenKey = swapToken.value || appState.swapToken;
+    const token = getSwapTokenConfig(tokenKey);
+    const amount = readPositiveAmount(swapAmount.value);
+    const amountRaw = parseSwapAmount(amount, token.decimals);
+
+    if (getSwapQuoteKey(tokenKey, amountRaw) === quoteKey) {
+      refreshSwapState();
+    }
+  }, SWAP_QUOTE_BACKGROUND_RETRY_MS);
+}
+
 function parseSwapAmount(amount, decimals) {
   if (!amount) return 0n;
 
@@ -891,6 +951,32 @@ function buildCircleSwapParams(adapter, selectedToken, amount) {
   };
 }
 
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function estimateSwapWithRetry(params, shouldContinue) {
+  let lastError;
+
+  for (let attempt = 0; attempt <= SWAP_QUOTE_RETRY_DELAYS_MS.length; attempt += 1) {
+    if (!shouldContinue()) return null;
+
+    try {
+      return await circleAppKit.estimateSwap(params);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === SWAP_QUOTE_RETRY_DELAYS_MS.length || !shouldContinue()) {
+        break;
+      }
+
+      await wait(SWAP_QUOTE_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  throw lastError;
+}
+
 function getAppKitErrorMessage(error) {
   return 'Swap temporarily unavailable — try again shortly.';
 }
@@ -908,6 +994,7 @@ function formatCircleAmountOut(amountOut) {
 
 function queueSwapStateRefresh() {
   window.clearTimeout(swapQuoteTimer);
+  window.clearTimeout(swapQuoteRetryTimer);
   swapQuoteTimer = window.setTimeout(refreshSwapState, 220);
 }
 
@@ -923,10 +1010,15 @@ async function refreshSwapState() {
   const token = getSwapTokenConfig(tokenKey);
   const amount = readPositiveAmount(swapAmount.value);
   const amountRaw = parseSwapAmount(amount, token.decimals);
+  const quoteKey = getSwapQuoteKey(tokenKey, amountRaw);
 
   appState.swapToken = tokenKey;
-  appState.swapLoading = Boolean(hasCircleKitKey() && connected);
+  appState.swapLoading = Boolean(hasCircleKitKey() && connected && amountRaw);
   appState.swapError = '';
+  if (appState.swapQuoteKey !== quoteKey) {
+    clearSwapQuote();
+    restoreCachedSwapQuote(quoteKey);
+  }
   renderSwapState();
 
   try {
@@ -939,38 +1031,43 @@ async function refreshSwapState() {
     appState.swapBalance = Number(window.ethers.formatUnits(balanceRaw, token.decimals));
 
     if (!hasCircleKitKey()) {
-      appState.swapQuoteRaw = 0n;
-      appState.swapMinOutRaw = 0n;
-      appState.swapEstimateUsdc = 0;
-      appState.swapMinUsdc = 0;
+      clearSwapQuote();
       return;
     }
 
     if (!connected || !amountRaw) {
-      appState.swapQuoteRaw = 0n;
-      appState.swapMinOutRaw = 0n;
-      appState.swapEstimateUsdc = 0;
-      appState.swapMinUsdc = 0;
+      clearSwapQuote();
       return;
     }
 
     const adapter = await getCircleSwapAdapter();
-    const estimate = await circleAppKit.estimateSwap(buildCircleSwapParams(adapter, token, amount));
+    const estimate = await estimateSwapWithRetry(
+      buildCircleSwapParams(adapter, token, amount),
+      () => requestId === swapQuoteRequest
+    );
 
-    if (requestId !== swapQuoteRequest) return;
+    if (requestId !== swapQuoteRequest || !estimate) return;
 
     const quoteRaw = window.ethers.parseUnits(trimTokenAmount(estimate.estimatedOutput.amount, TOKEN_DECIMALS), TOKEN_DECIMALS);
     const minOutRaw = window.ethers.parseUnits(trimTokenAmount(estimate.stopLimit.amount, TOKEN_DECIMALS), TOKEN_DECIMALS);
-    appState.swapQuoteRaw = quoteRaw;
-    appState.swapMinOutRaw = minOutRaw;
-    appState.swapEstimateUsdc = Number(window.ethers.formatUnits(quoteRaw, TOKEN_DECIMALS));
-    appState.swapMinUsdc = Number(window.ethers.formatUnits(minOutRaw, TOKEN_DECIMALS));
+    applySwapQuote(quoteKey, quoteRaw, minOutRaw);
+    swapQuoteCache.set(quoteKey, {
+      quoteRaw,
+      minOutRaw,
+      updatedAt: Date.now()
+    });
+    swapQuoteRetryCounts.delete(quoteKey);
+    window.clearTimeout(swapQuoteRetryTimer);
   } catch (error) {
     if (requestId !== swapQuoteRequest) return;
     console.error(error);
-    appState.swapError = getAppKitErrorMessage(error);
-    appState.swapQuoteRaw = 0n;
-    appState.swapMinOutRaw = 0n;
+    if (!restoreCachedSwapQuote(quoteKey)) {
+      appState.swapError = getAppKitErrorMessage(error);
+      clearSwapQuote();
+      if (connected && amountRaw) {
+        scheduleSwapQuoteRetry(quoteKey);
+      }
+    }
   } finally {
     if (requestId === swapQuoteRequest) {
       appState.swapLoading = false;
@@ -1002,7 +1099,8 @@ async function runSwap(button) {
 
   try {
     await refreshSwapState();
-    if (!appState.swapAmountRaw || !appState.swapQuoteRaw) {
+    const quoteKey = getSwapQuoteKey(swapToken.value || appState.swapToken, appState.swapAmountRaw);
+    if (!appState.swapAmountRaw || !appState.swapQuoteRaw || appState.swapQuoteKey !== quoteKey) {
       showToast('No swap quote available.');
       return;
     }
