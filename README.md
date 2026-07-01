@@ -113,7 +113,7 @@ forge script script/DeployMorphoVaultStrategy.s.sol --rpc-url arc_testnet --broa
 Point the existing ArcVault to the strategy:
 
 ```powershell
-$env:STRATEGY_ADDRESS="<circle-earn-strategy-address>"
+$env:STRATEGY_ADDRESS="<morpho-vault-strategy-address>"
 $env:DEPLOY_IDLE="true"
 forge script script/ConfigureStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $env:PRIVATE_KEY
 ```
@@ -166,6 +166,7 @@ The frontend is a minimal Vite app with [`index.html`](index.html) and [`src/mai
 - visible two-step USDC approval and deposit flow
 - Circle App Kit dashboard for `EURC -> USDC` and `cirBTC -> USDC`
 - App Kit quote, minimum received, and wallet-signed swap flow
+- cirBTC quotes routed by Arc token address with retries and same-amount quote caching
 - success and error toast indicators for confirmed or failed transactions
 
 Create `.env.local` for local frontend development:
@@ -173,6 +174,8 @@ Create `.env.local` for local frontend development:
 ```env
 VITE_CIRCLE_KIT_KEY=KIT_KEY:key_id:key_secret
 ```
+
+Production also needs `VITE_CIRCLE_KIT_KEY` configured in Vercel. The committed [`vercel.json`](vercel.json) rewrites `/api/circle/*` to Circle's API so the App Kit browser requests work in production as well as during local Vite development.
 
 Run locally:
 
@@ -265,6 +268,7 @@ Current local result:
 
 ```text
 index.html
+vercel.json
 src/
   main.js
 scripts/
