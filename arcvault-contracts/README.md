@@ -1,6 +1,6 @@
 # ArcVault Contracts
 
-ArcVault is a USDC yield vault for Arc Testnet. Users deposit USDC, receive yUSDC receipt shares, and withdraw their proportional claim at any time. The vault is designed for one Euler lending strategy on Arc Testnet, with a keeper address allowed to call `compound()`.
+ArcVault is a USDC yield vault for Arc Testnet. Users deposit USDC, receive yUSDC receipt shares, and withdraw their proportional claim at any time. The vault is designed for one Circle Earn Strategy on Arc Testnet, with a keeper address allowed to call `compound()`.
 
 Arc Testnet details:
 
@@ -13,7 +13,11 @@ Active deployment:
 
 - ArcVault: `0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c`
 - yUSDC: `0xF9a536cbb52a6AEC3b233883958bB4b6102156bA`
-- RealisticMockLendingStrategy: `0x6585CBCB1198c1DaDB1315D3437b8A0557818171`
+- CircleEarnStrategy: `0xD6bE89da890AcC2D2792A74a67a6897fc7758E98`
+
+External dependency:
+
+- Circle/App Kit Earn-discovered EarnKit USDC Vault: `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88`
 
 ## Setup
 
@@ -34,9 +38,9 @@ Set:
 
 - `PRIVATE_KEY`: deployer private key
 - `KEEPER_ADDRESS`: address allowed to call `compound()`
-- `EULER_STRATEGY_ADDRESS`: optional Euler strategy adapter address
+- `STRATEGY_ADDRESS`: optional strategy adapter address
 
-If `EULER_STRATEGY_ADDRESS` is omitted, the vault deploys without an active strategy and the owner can attach one later with `setStrategy(address)`.
+If `STRATEGY_ADDRESS` is omitted, the vault deploys without an active strategy and the owner can attach one later with `setStrategy(address)`.
 
 ## Test
 
@@ -65,10 +69,10 @@ The operator flow is:
 4. Configure the strategy on the real ArcVault address.
 5. Optionally call `deployIdle()` after strategy setup.
 
-For the development mock strategy:
+For the Circle Earn strategy:
 
 ```sh
-forge script script/DeployMockEulerStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $PRIVATE_KEY
+VAULT_ADDRESS=<arc-vault-address> forge script script/DeployCircleEarnStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $PRIVATE_KEY
 ```
 
 ## Configure Strategy
@@ -77,7 +81,7 @@ For an already deployed vault, set:
 
 ```sh
 VAULT_ADDRESS=<arc-vault-address>
-EULER_STRATEGY_ADDRESS=<strategy-address>
+STRATEGY_ADDRESS=<strategy-address>
 DEPLOY_IDLE=false
 ```
 
@@ -93,10 +97,11 @@ forge script script/ConfigureStrategy.s.sol --rpc-url arc_testnet --broadcast --
 
 ## Contract Layout
 
-- `src/ArcVault.sol`: vault accounting, deposits, withdrawals, keeper compounding, and Euler strategy integration interface.
+- `src/ArcVault.sol`: vault accounting, deposits, withdrawals, keeper compounding, and strategy integration interface.
 - `src/yUSDC.sol`: ERC-20 receipt token mintable and burnable only by ArcVault.
-- `src/MockEulerStrategy.sol`: simple local/dev strategy adapter for testing keeper compounding.
+- `src/CircleEarnStrategy.sol`: Circle/App Kit Earn vault strategy adapter.
 - `script/Deploy.s.sol`: deploys yUSDC, deploys ArcVault, then links the receipt token to the vault.
-- `script/DeployMockEulerStrategy.s.sol`: deploys the development mock strategy against Arc Testnet USDC.
+- `script/DeployCircleEarnStrategy.s.sol`: deploys the Circle Earn strategy against Arc Testnet USDC and the EarnKit USDC Vault.
 - `script/ConfigureStrategy.s.sol`: sets an existing vault strategy and optionally deploys idle funds.
 - `test/ArcVault.t.sol`: basic deposit, withdrawal, share math, and keeper access tests.
+- `test/CircleEarnStrategy.t.sol`: Earn vault deposit, withdrawal, harvest, and totalAssets tests.

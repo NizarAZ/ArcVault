@@ -1,8 +1,12 @@
-﻿.env
+.env
 **/.env
+.env.local
+*.local
 node_modules/
 **/node_modules/
+dist/
 arcvault-contracts/cache/
+arcvault-contracts/broadcast/
 arcvault-contracts/out/
 arcvault-contracts/lib/
 localhost-*.log

@@ -5,7 +5,6 @@ import solc from 'solc';
 
 const scriptsRoot = path.dirname(fileURLToPath(import.meta.url));
 const contractsRoot = path.resolve(scriptsRoot, '..', 'arcvault-contracts');
-const entryPath = path.join(contractsRoot, 'src', 'RealisticMockLendingStrategy.sol');
 
 function findImports(importPath) {
   const candidates = [
@@ -79,6 +78,15 @@ export function compileRealisticStrategy() {
       contract: 'RealisticMockLendingStrategy'
     }
   ]).RealisticMockLendingStrategy;
+}
+
+export function compileCircleEarnStrategy() {
+  return compile('CircleEarnStrategy.sol', [
+    {
+      source: 'src/CircleEarnStrategy.sol',
+      contract: 'CircleEarnStrategy'
+    }
+  ]).CircleEarnStrategy;
 }
 
 export function compileArcVaultStack() {

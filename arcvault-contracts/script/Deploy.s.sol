@@ -15,18 +15,18 @@ contract Deploy is Script {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(privateKey);
         address keeper = vm.envAddress("KEEPER_ADDRESS");
-        address eulerStrategy = vm.envOr("EULER_STRATEGY_ADDRESS", address(0));
+        address strategy = vm.envOr("STRATEGY_ADDRESS", vm.envOr("EULER_STRATEGY_ADDRESS", address(0)));
 
         vm.startBroadcast(privateKey);
 
         receiptToken = new yUSDC(deployer, 6);
-        vault = new ArcVault(IERC20(ARC_TESTNET_USDC), receiptToken, keeper, eulerStrategy, deployer);
+        vault = new ArcVault(IERC20(ARC_TESTNET_USDC), receiptToken, keeper, strategy, deployer);
         receiptToken.setVault(address(vault));
 
         vm.stopBroadcast();
 
         console2.log("ArcVault:", address(vault));
         console2.log("yUSDC:", address(receiptToken));
-        console2.log("Strategy:", eulerStrategy);
+        console2.log("Strategy:", strategy);
     }
 }

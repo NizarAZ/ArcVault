@@ -22,7 +22,10 @@ contract ConfigureStrategy is Script {
     function run() external {
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         address vault = vm.envAddress("VAULT_ADDRESS");
-        address strategy = vm.envAddress("EULER_STRATEGY_ADDRESS");
+        address strategy = vm.envOr("STRATEGY_ADDRESS", address(0));
+        if (strategy == address(0)) {
+            strategy = vm.envAddress("EULER_STRATEGY_ADDRESS");
+        }
         bool deployIdle = vm.envOr("DEPLOY_IDLE", false);
 
         address receiptToken = validateVault(vault);
