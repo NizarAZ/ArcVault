@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ArcVault — USDC Yield Vault on Arc Testnet</title>
   <meta property="og:title" content="ArcVault — USDC Yield Vault on Arc Testnet">
-  <meta property="og:description" content="Deposit USDC, mint yUSDC, and earn yield through a Circle/App Kit Earn vault on Arc Testnet. Transparent vault with automated keeper and sub-second finality.">
+  <meta property="og:description" content="Deposit USDC, mint yUSDC, and manage a simple yield vault on Arc Testnet.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ArcVault — USDC Yield Vault on Arc Testnet">
@@ -790,12 +790,34 @@
       gap: 16px;
     }
 
+    .swap-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
     .swap-copy h2 {
       margin: 0;
       font-size: clamp(30px, 4vw, 52px);
       font-weight: 300;
       line-height: 1;
       letter-spacing: 0;
+    }
+
+    .provider-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: rgba(12, 18, 32, 0.62);
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      white-space: nowrap;
     }
 
     .swap-copy p {
@@ -1086,7 +1108,7 @@
 
     .position-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -1539,6 +1561,24 @@
       font-size: 12px;
     }
 
+    .advanced-details {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: rgba(8, 12, 20, 0.42);
+    }
+
+    .advanced-details summary {
+      min-height: 44px;
+      padding: 13px 16px;
+      color: var(--color-text-muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .advanced-details .compound-lines {
+      padding: 0 16px 14px;
+    }
+
     .footer {
       display: flex;
       align-items: center;
@@ -1934,7 +1974,7 @@
         <div>
           <p class="eyebrow" data-stagger style="--stagger:0">USDC vault on Arc testnet</p>
           <h1 data-stagger style="--stagger:1">One vault. One strategy. Full signal.</h1>
-          <p class="hero-copy" data-stagger style="--stagger:2">Deposit testnet USDC, mint yUSDC, and watch every accounting move land on Arc with sub-second finality. Built for a Circle Earn Strategy and a daily vault keeper.</p>
+          <p class="hero-copy" data-stagger style="--stagger:2">Deposit testnet USDC, track your position, and withdraw when you are ready. ArcVault keeps the yield route active in the background.</p>
         </div>
         <div class="mission-bottom">
           <div class="metric" data-stagger style="--stagger:3">
@@ -1958,7 +1998,7 @@
         <div class="vault-header">
           <div>
             <h2 class="vault-title">ArcVault USDC</h2>
-            <p class="vault-subtitle">yUSDC · App Kit Earn vault</p>
+            <p class="vault-subtitle">USDC Vault</p>
           </div>
           <div class="vault-header-status">
             <span class="health-pill idle" id="healthPill">Idle</span>
@@ -2007,8 +2047,7 @@
             <div>
               <div class="data-row"><span>Your shares</span><strong id="userShares">--</strong></div>
               <div class="data-row"><span>Withdrawable</span><strong id="withdrawableBalance">--</strong></div>
-              <div class="data-row"><span>Strategy state</span><strong id="strategyState">Circle Earn Strategy</strong></div>
-              <div class="data-row"><span>Settlement</span><strong>1 tx</strong></div>
+              <div class="data-row"><span>Status</span><strong id="strategyState">Active</strong></div>
             </div>
             <div class="form-actions">
               <button class="btn-primary" id="withdrawAction" type="button">Withdraw</button>
@@ -2032,8 +2071,11 @@
     <section class="swap-panel panel reveal" id="swapPanel">
       <div class="swap-copy">
         <div>
-          <h2 data-stagger style="--stagger:0">Circle App Kit Swap</h2>
-          <p data-stagger style="--stagger:1">Swap existing Arc Testnet assets into USDC, then deposit directly into ArcVault.</p>
+          <div class="swap-heading">
+            <h2 data-stagger style="--stagger:0">Swap to USDC</h2>
+            <span class="provider-badge">Powered by Circle App Kit</span>
+          </div>
+          <p data-stagger style="--stagger:1">Convert supported Arc Testnet assets into USDC, then deposit directly into ArcVault.</p>
         </div>
         <div class="swap-reference" aria-label="Circle App Kit swap details" data-stagger style="--stagger:2">
           <div class="swap-reference-grid">
@@ -2042,7 +2084,7 @@
               <strong>EURC to USDC · cirBTC to USDC</strong>
             </div>
             <div class="swap-reference-row">
-              <span>Provider</span>
+              <span>Powered by</span>
               <strong>Circle App Kit</strong>
             </div>
             <div class="swap-reference-row">
@@ -2068,7 +2110,7 @@
         <div class="swap-coming-soon" data-stagger style="--stagger:3">
           <span>Separate step</span>
           <strong>Deposit stays in ArcVault</strong>
-          <p>Circle App Kit handles only the swap. Depositing the resulting USDC remains a normal ArcVault transaction.</p>
+          <p>The swap is separate from the vault deposit. After receiving USDC, deposit it into ArcVault.</p>
         </div>
       </div>
 
@@ -2100,10 +2142,10 @@
           <div class="data-row"><span>Estimated output</span><strong id="swapEstimate">--</strong></div>
           <div class="data-row"><span>Min received</span><strong id="swapMinReceived">--</strong></div>
           <div class="data-row"><span>Slippage</span><strong id="swapSlippage">1%</strong></div>
-          <div class="data-row"><span>Route</span><strong id="swapRoute">Circle App Kit to USDC</strong></div>
+          <div class="data-row"><span>Swap provider</span><strong id="swapRoute">Powered by Circle App Kit</strong></div>
           <div class="data-row"><span>After swap</span><strong>Deposit USDC</strong></div>
         </div>
-        <div class="swap-status" id="swapStatus">Connect a wallet to quote Circle App Kit on Arc Testnet.</div>
+        <div class="swap-status" id="swapStatus">Connect wallet to preview a USDC swap.</div>
         <div class="form-actions">
           <button class="btn-primary" id="swapAction" type="button">Swap to USDC</button>
           <button class="btn-secondary" id="useUsdcForDeposit" type="button">Use USDC balance in deposit</button>
@@ -2122,16 +2164,12 @@
           <strong id="myDeposited">0.00 USDC</strong>
         </div>
         <div class="position-cell" style="--cell-index:1">
-          <span>My yUSDC Shares</span>
-          <strong id="myShares">0.0000 yUSDC</strong>
+          <span>Available to Withdraw</span>
+          <strong id="myWithdrawable">0.00 USDC</strong>
         </div>
         <div class="position-cell" style="--cell-index:2">
           <span>My Earned USDC</span>
           <strong class="positive" id="myEarned">+0.00 USDC</strong>
-        </div>
-        <div class="position-cell" style="--cell-index:3">
-          <span>My Vault Share</span>
-          <strong id="myVaultShare">0.00%</strong>
         </div>
       </div>
       <div class="position-placeholder" id="positionPlaceholder">
@@ -2160,25 +2198,30 @@
       <aside class="section-panel panel">
         <div class="section-title" data-stagger style="--stagger:0">
           <h2>Keeper</h2>
-          <span>Circle Earn Strategy · Live</span>
+          <span>Advanced</span>
         </div>
         <div class="bot-stack">
           <div class="bot-card" data-stagger style="--stagger:1">
-            <span>Last rebalance</span>
+            <span>Status</span>
+            <strong>Active</strong>
+          </div>
+          <div class="bot-card" data-stagger style="--stagger:2">
+            <span>Allocation</span>
+            <strong id="strategySummary">100% allocated to yield</strong>
+          </div>
+          <div class="bot-card" data-stagger style="--stagger:3">
+            <span>Updated</span>
+            <strong id="strategyUpdate">Loading</strong>
+          </div>
+          <details class="advanced-details">
+            <summary>Vault details</summary>
             <div class="compound-lines" id="lastRebalance">
               <strong>Loading</strong>
             </div>
-          </div>
-          <div class="bot-card" data-stagger style="--stagger:2">
-            <span>Next compound</span>
             <div class="compound-lines" id="nextCompound">
               <strong>Loading</strong>
             </div>
-          </div>
-          <div class="bot-card" data-stagger style="--stagger:3">
-            <span>Strategy allocation</span>
-            <strong>100% USDC Earn vault</strong>
-          </div>
+          </details>
           <button class="btn-primary keeper-action" id="compoundAction" type="button" hidden>Compound</button>
         </div>
       </aside>

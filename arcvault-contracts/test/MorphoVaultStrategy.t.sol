@@ -8,10 +8,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {ArcVault} from "../src/ArcVault.sol";
-import {CircleEarnStrategy} from "../src/CircleEarnStrategy.sol";
+import {MorphoVaultStrategy} from "../src/MorphoVaultStrategy.sol";
 import {yUSDC} from "../src/yUSDC.sol";
 
-contract CircleMockUSDC is ERC20 {
+contract MorphoMockUSDC is ERC20 {
     constructor() ERC20("Mock USDC", "USDC") {}
 
     function mint(address to, uint256 amount) external {
@@ -23,30 +23,30 @@ contract CircleMockUSDC is ERC20 {
     }
 }
 
-contract MockEarnVault is ERC4626 {
-    constructor(IERC20 asset_) ERC20("EarnKit USDC Vault", "eUSDC") ERC4626(asset_) {}
+contract MockMorphoVaultV2 is ERC4626 {
+    constructor(IERC20 asset_) ERC20("Morpho USDC VaultV2", "mUSDC") ERC4626(asset_) {}
 }
 
-contract CircleEarnStrategyTest is Test {
-    CircleMockUSDC internal usdc;
-    MockEarnVault internal earnVault;
+contract MorphoVaultStrategyTest is Test {
+    MorphoMockUSDC internal usdc;
+    MockMorphoVaultV2 internal morphoVault;
     yUSDC internal receiptToken;
     ArcVault internal vault;
-    CircleEarnStrategy internal strategy;
+    MorphoVaultStrategy internal strategy;
 
     address internal user = address(0xA11CE);
     address internal keeper = address(0xB0B);
 
     function setUp() public {
-        usdc = new CircleMockUSDC();
-        earnVault = new MockEarnVault(IERC20(address(usdc)));
+        usdc = new MorphoMockUSDC();
+        morphoVault = new MockMorphoVaultV2(IERC20(address(usdc)));
         receiptToken = new yUSDC(address(this), 6);
         vault = new ArcVault(IERC20(address(usdc)), receiptToken, keeper, address(0), address(this));
         receiptToken.setVault(address(vault));
 
-        strategy = new CircleEarnStrategy(
+        strategy = new MorphoVaultStrategy(
             IERC20(address(usdc)),
-            IERC4626(address(earnVault)),
+            IERC4626(address(morphoVault)),
             address(vault),
             address(this)
         );
@@ -57,7 +57,7 @@ contract CircleEarnStrategyTest is Test {
         usdc.approve(address(vault), type(uint256).max);
     }
 
-    function testDepositSuppliesUsdcToEarnVaultAndTracksShares() public {
+    function testDepositSuppliesUsdcToMorphoVaultAndTracksShares() public {
         vm.prank(user);
         uint256 shares = vault.deposit(100e6);
 
@@ -66,12 +66,12 @@ contract CircleEarnStrategyTest is Test {
         assertEq(strategy.trackedShares(), 100e6);
         assertEq(strategy.accountedAssets(), 100e6);
         assertEq(strategy.totalAssets(), 100e6);
-        assertEq(earnVault.balanceOf(address(strategy)), 100e6);
-        assertEq(usdc.balanceOf(address(earnVault)), 100e6);
+        assertEq(morphoVault.balanceOf(address(strategy)), 100e6);
+        assertEq(usdc.balanceOf(address(morphoVault)), 100e6);
         assertEq(vault.totalAssets(), 100e6);
     }
 
-    function testWithdrawRedeemsEarnVaultSharesToArcVault() public {
+    function testWithdrawRedeemsMorphoVaultSharesToArcVault() public {
         vm.prank(user);
         vault.deposit(100e6);
 
@@ -82,16 +82,16 @@ contract CircleEarnStrategyTest is Test {
         assertEq(receiptToken.balanceOf(user), 60e6);
         assertEq(strategy.accountedAssets(), 60e6);
         assertEq(strategy.totalAssets(), 60e6);
-        assertEq(earnVault.balanceOf(address(strategy)), 60e6);
+        assertEq(morphoVault.balanceOf(address(strategy)), 60e6);
         assertEq(usdc.balanceOf(user), 940e6);
         assertEq(vault.totalAssets(), 60e6);
     }
 
-    function testHarvestRealizesEarnVaultSharePriceYield() public {
+    function testHarvestRealizesMorphoVaultSharePriceYield() public {
         vm.prank(user);
         vault.deposit(100e6);
 
-        usdc.mint(address(earnVault), 10e6);
+        usdc.mint(address(morphoVault), 10e6);
 
         assertEq(strategy.totalAssets(), 100e6);
         assertApproxEqAbs(strategy.pendingYield(), 10e6, 1);
@@ -115,9 +115,9 @@ contract CircleEarnStrategyTest is Test {
 
         assertEq(strategy.totalAssets(), 50e6);
 
-        usdc.mint(address(earnVault), 5e6);
+        usdc.mint(address(morphoVault), 5e6);
 
-        assertApproxEqAbs(earnVault.convertToAssets(strategy.trackedShares()), 55e6, 1);
+        assertApproxEqAbs(morphoVault.convertToAssets(strategy.trackedShares()), 55e6, 1);
         assertApproxEqAbs(strategy.pendingYield(), 5e6, 1);
         assertEq(strategy.totalAssets(), 50e6);
 
@@ -128,19 +128,19 @@ contract CircleEarnStrategyTest is Test {
     }
 
     function testConstructorRejectsNonUsdcEarnVaultAsset() public {
-        CircleMockUSDC otherAsset = new CircleMockUSDC();
-        MockEarnVault wrongEarnVault = new MockEarnVault(IERC20(address(otherAsset)));
+        MorphoMockUSDC otherAsset = new MorphoMockUSDC();
+        MockMorphoVaultV2 wrongMorphoVault = new MockMorphoVaultV2(IERC20(address(otherAsset)));
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                CircleEarnStrategy.InvalidEarnVaultAsset.selector,
+                MorphoVaultStrategy.InvalidMorphoVaultAsset.selector,
                 address(usdc),
                 address(otherAsset)
             )
         );
-        new CircleEarnStrategy(
+        new MorphoVaultStrategy(
             IERC20(address(usdc)),
-            IERC4626(address(wrongEarnVault)),
+            IERC4626(address(wrongMorphoVault)),
             address(vault),
             address(this)
         );

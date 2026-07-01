@@ -1,6 +1,6 @@
 # ArcVault Contracts
 
-ArcVault is a USDC yield vault for Arc Testnet. Users deposit USDC, receive yUSDC receipt shares, and withdraw their proportional claim at any time. The vault is designed for one Circle Earn Strategy on Arc Testnet, with a keeper address allowed to call `compound()`.
+ArcVault is a USDC yield vault for Arc Testnet. Users deposit USDC, receive yUSDC receipt shares, and withdraw their proportional claim at any time. The vault is designed for one Morpho vault strategy on Arc Testnet, with a keeper address allowed to call `compound()`.
 
 Arc Testnet details:
 
@@ -13,11 +13,11 @@ Active deployment:
 
 - ArcVault: `0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c`
 - yUSDC: `0xF9a536cbb52a6AEC3b233883958bB4b6102156bA`
-- CircleEarnStrategy: `0xD6bE89da890AcC2D2792A74a67a6897fc7758E98`
+- MorphoVaultStrategy: `0xD6bE89da890AcC2D2792A74a67a6897fc7758E98`
 
 External dependency:
 
-- Circle/App Kit Earn-discovered EarnKit USDC Vault: `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88`
+- Morpho VaultV2, an Arc ecosystem lending partner vault deployed by a third party on Arc Testnet: `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88`
 
 ## Setup
 
@@ -69,10 +69,10 @@ The operator flow is:
 4. Configure the strategy on the real ArcVault address.
 5. Optionally call `deployIdle()` after strategy setup.
 
-For the Circle Earn strategy:
+For the Morpho vault strategy:
 
 ```sh
-VAULT_ADDRESS=<arc-vault-address> forge script script/DeployCircleEarnStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $PRIVATE_KEY
+VAULT_ADDRESS=<arc-vault-address> forge script script/DeployMorphoVaultStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $PRIVATE_KEY
 ```
 
 ## Configure Strategy
@@ -99,9 +99,9 @@ forge script script/ConfigureStrategy.s.sol --rpc-url arc_testnet --broadcast --
 
 - `src/ArcVault.sol`: vault accounting, deposits, withdrawals, keeper compounding, and strategy integration interface.
 - `src/yUSDC.sol`: ERC-20 receipt token mintable and burnable only by ArcVault.
-- `src/CircleEarnStrategy.sol`: Circle/App Kit Earn vault strategy adapter.
+- `src/MorphoVaultStrategy.sol`: Morpho VaultV2 strategy adapter.
 - `script/Deploy.s.sol`: deploys yUSDC, deploys ArcVault, then links the receipt token to the vault.
-- `script/DeployCircleEarnStrategy.s.sol`: deploys the Circle Earn strategy against Arc Testnet USDC and the EarnKit USDC Vault.
+- `script/DeployMorphoVaultStrategy.s.sol`: deploys the Morpho vault strategy against Arc Testnet USDC and the Morpho VaultV2.
 - `script/ConfigureStrategy.s.sol`: sets an existing vault strategy and optionally deploys idle funds.
 - `test/ArcVault.t.sol`: basic deposit, withdrawal, share math, and keeper access tests.
-- `test/CircleEarnStrategy.t.sol`: Earn vault deposit, withdrawal, harvest, and totalAssets tests.
+- `test/MorphoVaultStrategy.t.sol`: Morpho vault deposit, withdrawal, harvest, and totalAssets tests.

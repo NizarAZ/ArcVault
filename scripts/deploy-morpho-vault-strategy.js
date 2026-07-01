@@ -6,13 +6,13 @@ import {
   getAddress
 } from 'ethers';
 
-import { compileCircleEarnStrategy } from './compile-strategy.js';
+import { compileMorphoVaultStrategy } from './compile-strategy.js';
 
 const ARC_RPC = process.env.ARC_RPC || 'https://rpc.testnet.arc.network';
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ARCVAULT_ADDRESS = process.env.VAULT_ADDRESS;
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
-const EARNKIT_USDC_VAULT = '0xaabbef1d3971c710276ed41ec791bbe14cdb8e88';
+const MORPHO_USDC_VAULT = '0xaabbef1d3971c710276ed41ec791bbe14cdb8e88';
 
 const VAULT_ABI = ['function owner() view returns (address)'];
 
@@ -32,20 +32,20 @@ async function main() {
   log(`Deploying from ${deployer.address}`);
   log(`ArcVault owner is ${vaultOwner}`);
   log(`ArcVault: ${ARCVAULT_ADDRESS}`);
-  log(`EarnKit USDC Vault: ${EARNKIT_USDC_VAULT}`);
+  log(`Morpho USDC VaultV2: ${MORPHO_USDC_VAULT}`);
 
-  const { abi, bytecode } = compileCircleEarnStrategy();
+  const { abi, bytecode } = compileMorphoVaultStrategy();
   const factory = new ContractFactory(abi, bytecode, deployer);
   const strategy = await factory.deploy(
     USDC_ADDRESS,
-    EARNKIT_USDC_VAULT,
+    MORPHO_USDC_VAULT,
     ARCVAULT_ADDRESS,
     vaultOwner
   );
 
   log(`Deployment submitted: ${strategy.deploymentTransaction().hash}`);
   await strategy.waitForDeployment();
-  log(`CircleEarnStrategy deployed: ${await strategy.getAddress()}`);
+  log(`MorphoVaultStrategy deployed: ${await strategy.getAddress()}`);
 }
 
 main().catch((error) => {

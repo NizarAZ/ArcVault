@@ -8,25 +8,24 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {IEulerLendingStrategy} from "./ArcVault.sol";
 
-/// @title CircleEarnStrategy
-/// @notice ArcVault strategy adapter for a Circle App Kit-discovered USDC Earn vault.
-/// @dev App Kit is discovery/infrastructure. This contract is ArcVault's onchain
-///      adapter and deposits USDC into the configured ERC-4626-style Earn vault.
-contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
+/// @title MorphoVaultStrategy
+/// @notice ArcVault strategy adapter for the Morpho USDC VaultV2 on Arc Testnet.
+/// @dev Deposits ArcVault USDC into the configured ERC-4626-style Morpho vault.
+contract MorphoVaultStrategy is IEulerLendingStrategy, Ownable {
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
     error Unauthorized();
-    error InvalidEarnVaultAsset(address expected, address actual);
+    error InvalidMorphoVaultAsset(address expected, address actual);
     error ZeroSharesReceived();
 
     IERC20 public immutable USDC;
-    IERC4626 public immutable earnVault;
+    IERC4626 public immutable morphoVault;
 
     /// @notice ArcVault address allowed to call deposit, withdraw, and harvest.
     address public vault;
 
-    /// @notice Earn vault shares received by this strategy for ArcVault deposits.
+    /// @notice Morpho vault shares received by this strategy for ArcVault deposits.
     uint256 public trackedShares;
 
     /// @notice Internally accounted USDC value. Harvest realizes positive deltas over this value.
@@ -39,8 +38,8 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
     uint256 public harvestCount;
 
     event VaultUpdated(address indexed vault);
-    event DepositedToEarnVault(uint256 assets, uint256 shares);
-    event WithdrawnFromEarnVault(uint256 assets, uint256 shares);
+    event DepositedToMorphoVault(uint256 assets, uint256 shares);
+    event WithdrawnFromMorphoVault(uint256 assets, uint256 shares);
     event YieldRealized(uint256 yieldAssets, uint256 totalAssetsAfter);
 
     modifier onlyVault() {
@@ -48,16 +47,16 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
         _;
     }
 
-    constructor(IERC20 usdc_, IERC4626 earnVault_, address vault_, address initialOwner_) Ownable(initialOwner_) {
-        if (address(usdc_) == address(0) || address(earnVault_) == address(0) || initialOwner_ == address(0)) {
+    constructor(IERC20 usdc_, IERC4626 morphoVault_, address vault_, address initialOwner_) Ownable(initialOwner_) {
+        if (address(usdc_) == address(0) || address(morphoVault_) == address(0) || initialOwner_ == address(0)) {
             revert ZeroAddress();
         }
 
-        address asset = earnVault_.asset();
-        if (asset != address(usdc_)) revert InvalidEarnVaultAsset(address(usdc_), asset);
+        address asset = morphoVault_.asset();
+        if (asset != address(usdc_)) revert InvalidMorphoVaultAsset(address(usdc_), asset);
 
         USDC = usdc_;
-        earnVault = earnVault_;
+        morphoVault = morphoVault_;
         lastUpdated = block.timestamp;
 
         _setVault(vault_);
@@ -74,15 +73,15 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
         USDC.safeTransferFrom(msg.sender, address(this), assets);
         uint256 received = USDC.balanceOf(address(this)) - balanceBefore;
 
-        USDC.forceApprove(address(earnVault), received);
-        uint256 shares = earnVault.deposit(received, address(this));
+        USDC.forceApprove(address(morphoVault), received);
+        uint256 shares = morphoVault.deposit(received, address(this));
         if (shares == 0) revert ZeroSharesReceived();
 
         trackedShares += shares;
         accountedAssets += received;
         lastUpdated = block.timestamp;
 
-        emit DepositedToEarnVault(received, shares);
+        emit DepositedToMorphoVault(received, shares);
     }
 
     /// @inheritdoc IEulerLendingStrategy
@@ -95,16 +94,16 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
 
         if (assets == accountedAssets) {
             uint256 redeemShares = trackedShares;
-            uint256 maxRedeem = earnVault.maxRedeem(address(this));
+            uint256 maxRedeem = morphoVault.maxRedeem(address(this));
             if (redeemShares > maxRedeem) redeemShares = maxRedeem;
             if (redeemShares == 0) return 0;
 
-            earnVault.redeem(redeemShares, msg.sender, address(this));
+            morphoVault.redeem(redeemShares, msg.sender, address(this));
             sharesBurned = redeemShares;
         } else {
-            uint256 sharesBefore = earnVault.balanceOf(address(this));
-            earnVault.withdraw(assets, msg.sender, address(this));
-            sharesBurned = sharesBefore - earnVault.balanceOf(address(this));
+            uint256 sharesBefore = morphoVault.balanceOf(address(this));
+            morphoVault.withdraw(assets, msg.sender, address(this));
+            sharesBurned = sharesBefore - morphoVault.balanceOf(address(this));
         }
 
         withdrawn = USDC.balanceOf(msg.sender) - receiverBalanceBefore;
@@ -112,7 +111,7 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
         accountedAssets = withdrawn >= accountedAssets ? 0 : accountedAssets - withdrawn;
         lastUpdated = block.timestamp;
 
-        emit WithdrawnFromEarnVault(withdrawn, sharesBurned);
+        emit WithdrawnFromMorphoVault(withdrawn, sharesBurned);
     }
 
     /// @inheritdoc IEulerLendingStrategy
@@ -135,7 +134,7 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
         assets = accountedAssets;
     }
 
-    /// @notice Positive Earn vault value above internal accounting, before the next harvest.
+    /// @notice Positive Morpho vault value above internal accounting, before the next harvest.
     function pendingYield() external view returns (uint256 yieldAssets) {
         uint256 managedAssets = _managedAssets();
         if (managedAssets > accountedAssets) {
@@ -144,7 +143,7 @@ contract CircleEarnStrategy is IEulerLendingStrategy, Ownable {
     }
 
     function _managedAssets() internal view returns (uint256 assets) {
-        assets = earnVault.convertToAssets(trackedShares);
+        assets = morphoVault.convertToAssets(trackedShares);
     }
 
     function _setVault(address vault_) internal {

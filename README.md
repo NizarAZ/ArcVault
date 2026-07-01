@@ -2,7 +2,7 @@
 
 ArcVault is a non-custodial USDC yield vault deployed on Arc Testnet. Users deposit USDC, receive yUSDC receipt tokens, and withdraw their proportional share of the vault.
 
-The project includes a Vite frontend, Solidity vault contracts, Circle App Kit swaps on Arc Testnet, a Circle/App Kit Earn vault strategy adapter, and an automated keeper.
+The project includes a Vite frontend, Solidity vault contracts, Circle App Kit swaps on Arc Testnet, a Morpho VaultV2 strategy adapter, and an automated keeper.
 
 ## Live App
 
@@ -23,11 +23,11 @@ The project includes a Vite frontend, Solidity vault contracts, Circle App Kit s
 | --- | --- |
 | ArcVault | `0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c` |
 | yUSDC | `0xF9a536cbb52a6AEC3b233883958bB4b6102156bA` |
-| CircleEarnStrategy | `0xD6bE89da890AcC2D2792A74a67a6897fc7758E98` |
+| MorphoVaultStrategy | `0xD6bE89da890AcC2D2792A74a67a6897fc7758E98` |
 
 External dependency:
 
-- Circle/App Kit Earn-discovered EarnKit USDC Vault: `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88`
+- Morpho VaultV2, an Arc ecosystem lending partner vault deployed by a third party on Arc Testnet: `0xaabbef1d3971c710276ed41ec791bbe14cdb8e88`
 
 Token dependencies:
 
@@ -35,7 +35,7 @@ Token dependencies:
 - Arc Testnet EURC: `0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a`
 - Arc Testnet cirBTC: `0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF`
 
-The current ArcVault address remains unchanged and now points to `CircleEarnStrategy`.
+The current ArcVault address remains unchanged and now points to the deployed Morpho vault strategy.
 
 ## Circle App Kit Swap
 
@@ -67,20 +67,20 @@ USDC is not shown as a swap input because it can already be deposited directly. 
 
 [`ArcSwap.sol`](arcvault-contracts/src/ArcSwap.sol) remains in the repo as legacy testnet AMM code, but it is no longer the active frontend swap route.
 
-## Circle Earn Strategy
+## Morpho Vault Strategy
 
-[`CircleEarnStrategy.sol`](arcvault-contracts/src/CircleEarnStrategy.sol) is ArcVault's onchain adapter for the App Kit-discovered EarnKit USDC Vault. App Kit is SDK and discovery infrastructure; ArcVault does not deploy App Kit as a strategy.
+[`MorphoVaultStrategy.sol`](arcvault-contracts/src/MorphoVaultStrategy.sol) is ArcVault's onchain adapter for a third-party Morpho VaultV2 on Arc Testnet.
 
 The strategy provides:
 
-- vault-only USDC deposits into the Earn vault
+- vault-only USDC deposits into the Morpho vault
 - vault-only withdrawals back to ArcVault
-- tracked Earn vault shares
+- tracked Morpho vault shares
 - accounted USDC assets for ArcVault share math
-- `pendingYield()` for Earn vault value above internal accounting
-- `harvest()` to realize positive Earn vault value into strategy accounting
+- `pendingYield()` for Morpho vault value above internal accounting
+- `harvest()` to realize positive Morpho vault value into strategy accounting
 
-Yield comes from the Earn vault share price. `harvest()` compares the current Earn vault asset value against internal accounting, updates accounting when the value is higher, and returns the realized yield amount.
+Yield comes from the Morpho vault share price. `harvest()` compares the current Morpho vault asset value against internal accounting, updates accounting when the value is higher, and returns the realized yield amount.
 
 ## Vault Accounting
 
@@ -102,12 +102,12 @@ The vault uses state-based accounting rather than trusting the strategy's raw ha
 
 ## Deployment
 
-Deploy the Circle Earn strategy:
+Deploy the Morpho vault strategy:
 
 ```powershell
 cd arcvault-contracts
 $env:VAULT_ADDRESS="0xf6BEB2719018814fa034006Fa1e7Be5a4f08D21c"
-forge script script/DeployCircleEarnStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $env:PRIVATE_KEY
+forge script script/DeployMorphoVaultStrategy.s.sol --rpc-url arc_testnet --broadcast --private-key $env:PRIVATE_KEY
 ```
 
 Point the existing ArcVault to the strategy:
@@ -246,7 +246,7 @@ It must belong to the wallet currently returned by `ArcVault.keeper()`. Once con
 
 ## Contract Tests
 
-Foundry tests cover the vault, Circle Earn strategy accounting, and legacy ArcSwap behavior.
+Foundry tests cover the vault, Morpho vault strategy accounting, and legacy ArcSwap behavior.
 
 Run:
 
@@ -275,7 +275,7 @@ arcvault-contracts/
     ArcSwap.sol
     ArcVault.sol
     yUSDC.sol
-    CircleEarnStrategy.sol
+    MorphoVaultStrategy.sol
   script/
   test/
     ArcSwap.t.sol

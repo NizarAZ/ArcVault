@@ -69,7 +69,7 @@ async function main() {
     if (reason.includes('caller is not a minter')) {
       log(
         `Compound skipped: active strategy ${strategyAddress} is the legacy minting mock. ` +
-        'Deploy and assign CircleEarnStrategy before automated compounding.'
+        'Deploy and assign MorphoVaultStrategy before automated compounding.'
       );
       return;
     }

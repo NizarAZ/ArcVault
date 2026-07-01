@@ -127,7 +127,7 @@ const appState = {
   depositedUsdc: 0,
   personalEarned: 0,
   exchangeRate: 1,
-  strategy: 'Circle Earn Strategy',
+  strategy: 'Active',
   health: 'Idle',
   isKeeper: false,
   keeper: '',
@@ -782,31 +782,31 @@ function renderSwapState() {
 
   swapEstimate.textContent = hasQuote ? `${formatNumber(appState.swapEstimateUsdc, 2)} USDC` : '--';
   swapMinReceived.textContent = hasQuote ? `${formatNumber(appState.swapMinUsdc, 2)} USDC` : '--';
-  swapRoute.textContent = `${selectedToken.symbol} to USDC via Circle App Kit`;
+  swapRoute.textContent = `Powered by Circle App Kit`;
 
   if (!hasKitKey) {
-    swapStatus.textContent = 'Circle App Kit key is not configured. Add VITE_CIRCLE_KIT_KEY to .env.local.';
+    swapStatus.textContent = 'Swap temporarily unavailable — try again shortly.';
     swapAction.disabled = true;
-    swapAction.textContent = 'App Kit unavailable';
+    swapAction.textContent = 'Swap unavailable';
     return;
   }
 
   if (!connected) {
-    swapStatus.textContent = 'Connect wallet to quote Circle App Kit on Arc Testnet.';
+    swapStatus.textContent = 'Connect wallet to preview a USDC swap.';
     swapAction.disabled = false;
     swapAction.textContent = 'Connect Wallet';
     return;
   }
 
   if (!amount) {
-    swapStatus.textContent = 'Enter an amount to quote the Circle App Kit route.';
+    swapStatus.textContent = 'Enter an amount to preview the swap.';
     swapAction.disabled = true;
     swapAction.textContent = 'Enter amount';
     return;
   }
 
   if (appState.swapLoading) {
-    swapStatus.textContent = 'Checking Circle App Kit quote...';
+    swapStatus.textContent = 'Checking swap quote...';
     swapAction.disabled = true;
     swapAction.textContent = 'Checking quote';
     return;
@@ -827,7 +827,7 @@ function renderSwapState() {
   }
 
   if (!hasQuote) {
-    swapStatus.textContent = 'No Circle App Kit quote available for this amount.';
+    swapStatus.textContent = 'No swap quote available for this amount.';
     swapAction.disabled = true;
     swapAction.textContent = 'Quote unavailable';
     return;
@@ -892,7 +892,7 @@ function buildCircleSwapParams(adapter, selectedToken, amount) {
 }
 
 function getAppKitErrorMessage(error) {
-  return error?.shortMessage || error?.message || 'Circle App Kit route is unavailable. Try again later.';
+  return 'Swap temporarily unavailable — try again shortly.';
 }
 
 function formatCircleAmountOut(amountOut) {
@@ -991,7 +991,7 @@ async function runSwap(button) {
   }
 
   if (!hasCircleKitKey()) {
-    showToast('Circle App Kit key is not configured.', 'error');
+    showToast('Swap temporarily unavailable — try again shortly.', 'error');
     return;
   }
 
@@ -1016,15 +1016,19 @@ async function runSwap(button) {
     addActivity(
       'Swap',
       `+${formatNumber(amountOut, 2)} USDC`,
-      `${selectedToken.symbol} to USDC via Circle App Kit`,
+      `${selectedToken.symbol} to USDC`,
       result.txHash
     );
     await refreshOnchainState();
     await refreshSwapState();
-    showToast('Circle App Kit swap confirmed. USDC is ready to deposit.', 'success');
+    showToast('Swap confirmed. USDC is ready to deposit.', 'success');
   } catch (error) {
     console.error(error);
-    handleTxError(error, 'Swap failed.');
+    if (error?.code === 4001 || String(error?.message || '').toLowerCase().includes('rejected')) {
+      showToast('Transaction rejected.', 'error');
+    } else {
+      showToast('Swap temporarily unavailable — try again shortly.', 'error');
+    }
   } finally {
     clearButtonBusy(button, 'Swap to USDC');
   }
@@ -1301,11 +1305,8 @@ function renderAppState() {
   const estimatedShares = depositAmount / appState.exchangeRate;
   const estimatedWithdraw = withdrawShares * appState.exchangeRate;
   const earnedPct = appState.depositedUsdc > 0 && appState.dayEarned !== null ? (appState.dayEarned / appState.depositedUsdc) * 100 : 0;
-  const vaultShare = appState.vaultUsdc > 0 ? (appState.depositedUsdc / appState.vaultUsdc) * 100 : 0;
   const displayedApy = appState.netApy !== null ? Math.min(appState.netApy, 999.99) : null;
-  const lastCompoundHours = appState.lastCompoundTimestamp
-    ? Math.floor((Date.now() - appState.lastCompoundTimestamp) / 3600000)
-    : null;
+  const lastYieldUpdate = appState.lastCompoundTimestamp || appState.lastStrategyUpdateTimestamp;
 
   syncAmountFieldStates();
   depositInput.disabled = !connected;
@@ -1330,16 +1331,16 @@ function renderAppState() {
     : '--';
   document.getElementById('apyContext').textContent = appState.netApy === null
     ? '--'
-    : appState.apyIsProjected
-      ? 'Projected from Circle Earn Strategy yield · Arc Testnet'
-      : `Based on last compound · Circle Earn Strategy · Arc Testnet · Updated ${lastCompoundHours ?? 0}h ago`;
+    : lastYieldUpdate
+      ? `Last updated ${formatAge(lastYieldUpdate)}`
+      : 'Live vault rate';
+  document.getElementById('apyContext').title = appState.apyIsProjected ? 'Projected from current vault data' : 'Based on the latest keeper update';
   document.getElementById('earnedMetric').textContent = appState.dayEarned !== null ? `+${formatNumber(appState.dayEarned, 2)}` : '--';
   document.getElementById('earnedContext').textContent = appState.dayEarned !== null ? `≈ $${formatNumber(appState.dayEarned, 2)} · ${formatNumber(earnedPct, 4)}% of position` : '--';
   document.getElementById('exchangeRate').textContent = `1 yUSDC = ${formatNumber(appState.exchangeRate, 4)} USDC`;
   document.getElementById('myDeposited').textContent = `${formatNumber(appState.depositedUsdc, 2)} USDC`;
-  document.getElementById('myShares').textContent = `${formatNumber(appState.userShares, 4)} yUSDC`;
+  document.getElementById('myWithdrawable').textContent = `${formatNumber(appState.withdrawableUsdc, 2)} USDC`;
   document.getElementById('myEarned').textContent = `+${formatNumber(appState.personalEarned, 2)} USDC`;
-  document.getElementById('myVaultShare').textContent = `${formatNumber(vaultShare, 2)}%`;
   renderSwapState();
   renderKeeperTracker();
 }
@@ -1501,6 +1502,8 @@ function formatAge(timestamp) {
 function renderKeeperTracker() {
   const lastRebalance = document.getElementById('lastRebalance');
   const nextCompound = document.getElementById('nextCompound');
+  const strategySummary = document.getElementById('strategySummary');
+  const strategyUpdate = document.getElementById('strategyUpdate');
   if (!lastRebalance || !nextCompound) return;
 
   const lastTimestamp = appState.lastCompoundTimestamp || appState.lastStrategyUpdateTimestamp;
@@ -1509,10 +1512,20 @@ function renderKeeperTracker() {
     ? 'Checking strategy yield'
     : `Pending yield ${formatNumber(appState.pendingYieldUsdc, 6)} USDC`;
 
+  if (strategySummary) {
+    strategySummary.textContent = '100% allocated to yield';
+  }
+
+  if (strategyUpdate) {
+    strategyUpdate.textContent = hasCompoundHistory && lastTimestamp
+      ? `Last updated ${formatAge(lastTimestamp)}`
+      : 'No yield update yet';
+  }
+
   lastRebalance.innerHTML = hasCompoundHistory && lastTimestamp
     ? `
       <strong>${formatAge(lastTimestamp)}</strong>
-      <small>${appState.lastCompoundTimestamp ? 'Last keeper compound' : 'Last strategy update'}</small>
+      <small>${appState.lastCompoundTimestamp ? 'Last yield update' : 'Last strategy update'}</small>
     `
     : `
       <strong>No compounds yet</strong>

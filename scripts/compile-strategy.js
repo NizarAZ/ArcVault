@@ -80,13 +80,13 @@ export function compileRealisticStrategy() {
   ]).RealisticMockLendingStrategy;
 }
 
-export function compileCircleEarnStrategy() {
-  return compile('CircleEarnStrategy.sol', [
+export function compileMorphoVaultStrategy() {
+  return compile('MorphoVaultStrategy.sol', [
     {
-      source: 'src/CircleEarnStrategy.sol',
-      contract: 'CircleEarnStrategy'
+      source: 'src/MorphoVaultStrategy.sol',
+      contract: 'MorphoVaultStrategy'
     }
-  ]).CircleEarnStrategy;
+  ]).MorphoVaultStrategy;
 }
 
 export function compileArcVaultStack() {
