@@ -10,3 +10,5 @@ arcvault-contracts/broadcast/
 arcvault-contracts/out/
 arcvault-contracts/lib/
 localhost-*.log
+
+.vercel/
