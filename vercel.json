@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/circle/:path*",
+      "destination": "https://api.circle.com/:path*"
+    }
+  ]
+}
