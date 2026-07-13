@@ -1022,6 +1022,8 @@ async function refreshSwapState() {
   const amountRaw = parseSwapAmount(amount, token.decimals);
   const quoteKey = getSwapQuoteKey(tokenKey, amountRaw);
 
+  console.log('refreshSwapState:', { tokenKey, token, amount, amountRaw, quoteKey });
+
   appState.swapToken = tokenKey;
   appState.swapLoading = Boolean(hasCircleKitKey() && connected && amountRaw);
   appState.swapError = '';
