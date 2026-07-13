@@ -68,7 +68,7 @@ const SWAP_TOKENS = {
   cirbtc: {
     name: 'cirBTC',
     symbol: 'cirBTC',
-    appKitSymbol: 'cirBTC',
+    appKitSymbol: ARC_CIRBTC_ADDRESS,
     address: ARC_CIRBTC_ADDRESS,
     decimals: 8
   }
