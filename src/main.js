@@ -957,16 +957,30 @@ function wait(ms) {
 
 async function estimateSwapWithRetry(params, shouldContinue) {
   let lastError;
+  const isCirBTC = params.tokenIn === 'cirBTC' || params.tokenIn === ARC_CIRBTC_ADDRESS;
 
   for (let attempt = 0; attempt <= SWAP_QUOTE_RETRY_DELAYS_MS.length; attempt += 1) {
     if (!shouldContinue()) return null;
 
     try {
+      console.log(`estimateSwap attempt ${attempt + 1}:`, {
+        tokenIn: params.tokenIn,
+        tokenOut: params.tokenOut,
+        amountIn: params.amountIn,
+        chain: params.chain,
+        isCirBTC
+      });
       console.log('Circle App Kit estimateSwap params:', JSON.stringify(params, null, 2));
       return await circleAppKit.estimateSwap(params);
     } catch (error) {
       lastError = error;
-      console.error(`estimateSwap attempt ${attempt + 1} failed:`, error);
+      console.error(`estimateSwap attempt ${attempt + 1} failed:`, {
+        tokenIn: params.tokenIn,
+        amountIn: params.amountIn,
+        error: error.message,
+        code: error.code,
+        isCirBTC
+      });
 
       if (attempt === SWAP_QUOTE_RETRY_DELAYS_MS.length || !shouldContinue()) {
         break;
@@ -980,13 +994,23 @@ async function estimateSwapWithRetry(params, shouldContinue) {
 }
 
 function getAppKitErrorMessage(error) {
-  console.error('Circle App Kit error:', error);
+  console.error('Circle App Kit error details:', {
+    message: error?.message,
+    code: error?.code,
+    fullError: error
+  });
   const message = error?.message || String(error);
+  if (message.includes('INPUT_UNSUPPORTED_ROUTE') || message.includes('No route available')) {
+    return 'Swap route not available — Circle may not have liquidity for this pair on Arc Testnet.';
+  }
   if (message.includes('unsupported') || message.includes('not supported')) {
     return 'Token not supported for swap on this network.';
   }
   if (message.includes('liquidity') || message.includes('insufficient')) {
     return 'Insufficient liquidity for this swap.';
+  }
+  if (message.includes('amount') && (message.includes('small') || message.includes('minimum') || message.includes('below'))) {
+    return 'Amount too small for this swap.';
   }
   return 'Swap temporarily unavailable — try again shortly.';
 }
@@ -1120,8 +1144,21 @@ async function runSwap(button) {
     setButtonBusy(button, 'Swap via App Kit');
     showToast(`Confirm ${selectedToken.symbol} to USDC swap in your wallet.`);
     const adapter = await getCircleSwapAdapter();
+    const isCirBTC = selectedToken.symbol === 'cirBTC';
+    console.log(`runSwap executing:`, {
+      token: selectedToken.symbol,
+      amount,
+      isCirBTC
+    });
     const result = await circleAppKit.swap(buildCircleSwapParams(adapter, selectedToken, amount));
     const amountOut = formatCircleAmountOut(result.amountOut);
+    console.log(`runSwap result:`, {
+      token: selectedToken.symbol,
+      amountIn: amount,
+      amountOut,
+      txHash: result.txHash,
+      isCirBTC
+    });
 
     addActivity(
       'Swap',
