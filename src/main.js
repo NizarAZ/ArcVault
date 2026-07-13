@@ -962,9 +962,11 @@ async function estimateSwapWithRetry(params, shouldContinue) {
     if (!shouldContinue()) return null;
 
     try {
+      console.log('Circle App Kit estimateSwap params:', JSON.stringify(params, null, 2));
       return await circleAppKit.estimateSwap(params);
     } catch (error) {
       lastError = error;
+      console.error(`estimateSwap attempt ${attempt + 1} failed:`, error);
 
       if (attempt === SWAP_QUOTE_RETRY_DELAYS_MS.length || !shouldContinue()) {
         break;
@@ -978,6 +980,14 @@ async function estimateSwapWithRetry(params, shouldContinue) {
 }
 
 function getAppKitErrorMessage(error) {
+  console.error('Circle App Kit error:', error);
+  const message = error?.message || String(error);
+  if (message.includes('unsupported') || message.includes('not supported')) {
+    return 'Token not supported for swap on this network.';
+  }
+  if (message.includes('liquidity') || message.includes('insufficient')) {
+    return 'Insufficient liquidity for this swap.';
+  }
   return 'Swap temporarily unavailable — try again shortly.';
 }
 
