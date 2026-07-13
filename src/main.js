@@ -826,6 +826,9 @@ function renderSwapState() {
     swapStatus.textContent = appState.swapError;
     swapAction.disabled = true;
     swapAction.textContent = 'Quote unavailable';
+    if (tokenKey === 'cirbtc' && appState.swapError.includes('route')) {
+      swapStatus.textContent = 'cirBTC swap route temporarily unavailable — Circle may be replenishing testnet liquidity. Try EURC instead.';
+    }
     return;
   }
 
