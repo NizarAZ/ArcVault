@@ -16,6 +16,7 @@ jobs:
   compound:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: Production
     env:
       ARCRPC: ${{ vars.ARCRPC || 'https://rpc.testnet.arc.network' }}
       ARCRPC_FALLBACK: ${{ vars.ARCRPC_FALLBACK }}
