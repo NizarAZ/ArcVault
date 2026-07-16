@@ -8,12 +8,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: keeper
+  cancel-in-progress: false
+
 jobs:
   compound:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      ARC_RPC: https://rpc.testnet.arc.network
+      ARCRPC: ${{ vars.ARCRPC || 'https://rpc.testnet.arc.network' }}
+      ARCRPC_FALLBACK: ${{ vars.ARCRPC_FALLBACK }}
       PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY || secrets.PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v6
