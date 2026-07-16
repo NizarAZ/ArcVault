@@ -150,11 +150,13 @@ export async function retryWithBackoff(fn, { attempts = 3, baseDelayMs = 1000, l
  * @param {JsonRpcProvider} primaryProvider - Primary RPC provider
  * @param {JsonRpcProvider|null} fallbackProvider - Fallback RPC provider (optional)
  * @param {Object} options - Retry options
+ * @param {string} options.providerName - Sanitized provider hostname for logging (required)
+ * @param {string} options.fallbackProviderName - Sanitized fallback provider hostname (optional)
  * @returns {Promise<any>} - The result of the successful function call
  */
 export async function withProviderFailover(fn, primaryProvider, fallbackProvider, options = {}) {
-  const primaryHostname = sanitizeUrl(primaryProvider._connection?.url || 'primary');
-  const fallbackHostname = fallbackProvider ? sanitizeUrl(fallbackProvider._connection?.url || 'fallback') : null;
+  const primaryHostname = options.providerName || sanitizeUrl(primaryProvider._connection?.url || 'primary');
+  const fallbackHostname = options.fallbackProviderName || (fallbackProvider ? sanitizeUrl(fallbackProvider._connection?.url || 'fallback') : null);
 
   try {
     return await retryWithBackoff(() => fn(primaryProvider), {
@@ -182,7 +184,11 @@ async function main() {
   const primaryProvider = new JsonRpcProvider(ARCRPC);
   const fallbackProvider = ARCRPC_FALLBACK ? new JsonRpcProvider(ARCRPC_FALLBACK) : null;
 
-  log(`Connecting to Arc Testnet RPC: ${sanitizeUrl(ARCRPC)}${fallbackProvider ? ` (fallback: ${sanitizeUrl(ARCRPC_FALLBACK)})` : ''}`);
+  // Compute explicit provider names for logging
+  const primaryRpcName = sanitizeUrl(ARCRPC);
+  const fallbackRpcName = ARCRPC_FALLBACK ? sanitizeUrl(ARCRPC_FALLBACK) : null;
+
+  log(`Connecting to Arc Testnet RPC: ${primaryRpcName}${fallbackRpcName ? ` (fallback: ${fallbackRpcName})` : ''}`);
   
   const wallet = new Wallet(PRIVATE_KEY, primaryProvider);
   log(`Loaded keeper wallet: ${wallet.address}`);
@@ -198,7 +204,7 @@ async function main() {
     (provider) => providerVault.connect(provider).keeper(),
     primaryProvider,
     fallbackProvider,
-    { label: 'vault.keeper()' }
+    { label: 'vault.keeper()', providerName: primaryRpcName, fallbackProviderName: fallbackRpcName }
   );
   await delay(250); // Small delay to reduce rate limit chance
 
@@ -211,7 +217,7 @@ async function main() {
     (provider) => providerVault.connect(provider).strategy(),
     primaryProvider,
     fallbackProvider,
-    { label: 'vault.strategy()' }
+    { label: 'vault.strategy()', providerName: primaryRpcName, fallbackProviderName: fallbackRpcName }
   );
   await delay(250); // Small delay to reduce rate limit chance
   log(`Active strategy: ${strategyAddress}`);
@@ -223,7 +229,7 @@ async function main() {
     (provider) => strategy.connect(provider).totalAssets(),
     primaryProvider,
     fallbackProvider,
-    { label: 'strategy.totalAssets()' }
+    { label: 'strategy.totalAssets()', providerName: primaryRpcName, fallbackProviderName: fallbackRpcName }
   );
   await delay(250); // Small delay to reduce rate limit chance
   log(`Strategy assets: ${formatUsdc(strategyAssets)}`);
@@ -233,7 +239,7 @@ async function main() {
     (provider) => providerVault.connect(provider).totalAssets(),
     primaryProvider,
     fallbackProvider,
-    { label: 'vault.totalAssets()' }
+    { label: 'vault.totalAssets()', providerName: primaryRpcName, fallbackProviderName: fallbackRpcName }
   );
   await delay(250); // Small delay to reduce rate limit chance
   log(`Vault totalAssets before compound: ${formatUsdc(totalAssetsBefore)}`);
@@ -248,7 +254,7 @@ async function main() {
     // Use signer-connected vault for staticCall to preserve keeper sender context
     const expectedYield = await retryWithBackoff(() => vault.compound.staticCall(), {
       label: 'vault.compound.staticCall()',
-      providerName: sanitizeUrl(ARCRPC)
+      providerName: primaryRpcName
     });
     log(`Compound simulation succeeded. Expected yield: ${formatUsdc(expectedYield)}`);
   } catch (error) {
@@ -264,6 +270,15 @@ async function main() {
 
     throw error;
   }
+
+  // Add delay after successful simulation before transaction submission
+  await delay(2000);
+
+  log('Verifying network connectivity before transaction submission.');
+  await retryWithBackoff(() => primaryProvider.getNetwork(), {
+    label: 'getNetwork',
+    providerName: primaryRpcName
+  });
 
   log('Submitting vault.compound().');
   // Simple transaction submission through primary provider only (no retry/failover)
